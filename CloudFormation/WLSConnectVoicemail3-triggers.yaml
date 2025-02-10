@@ -120,6 +120,9 @@ Resources:
           bucket:
             name:
               - !Ref WLSConnectVoicemailS3TranscriptsBucket
+          object:
+            key: 
+              - wildcard: "*.json"
       Name: !Join [ "-", [ wls,!Ref ConnectInstanceAlias,PackagerRule ] ]
       State: ENABLED
       Targets: 

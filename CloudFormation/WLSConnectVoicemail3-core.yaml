@@ -230,6 +230,16 @@ Resources:
                 - TransitionInDays: !Ref RecordingsExpireInXDays
                   StorageClass: GLACIER
         - !Ref AWS::NoValue
+      VersioningConfiguration:
+        Status: Enabled
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: GOVERNANCE
+            Years: 7
+
 
   WLSConnectVoicemailKMSS3Key:
     Type: AWS::KMS::Key
@@ -293,6 +303,16 @@ Resources:
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
+      VersioningConfiguration:
+        Status: Enabled
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: GOVERNANCE
+            Years: 7
+
 
   WLSConnectVoicemailPresignerAssumePolicy:
     Type: AWS::IAM::ManagedPolicy
