@@ -31,7 +31,7 @@ def lambda_handler(event, context):
     
     # Debug lines for troubleshooting
     logger.debug('Code Version: ' + current_version)
-    logger.debug('VMX3 Package Version: ' + os.environ['package_version'])
+    logger.debug('WLSConnectVoicemail3 Package Version: ' + os.environ['package_version'])
     logger.debug(event)
 
     # Establish an empty response
@@ -42,9 +42,9 @@ def lambda_handler(event, context):
 
     # Retrieve credentials from AWS Secrets Manager
     try:
-        use_keys = get_secret()
+        use_keys = assume_role_for_creds()
         logger.debug('********** Successfully retrieved keys **********')
-
+        logger.debug(use_keys)
     except Exception as e:
         logger.error('********** Key retrieval failed **********')
         logger.error(e)
@@ -72,8 +72,9 @@ def lambda_handler(event, context):
         s3_client = boto3.client(
             's3',
             endpoint_url = 'https://s3.' + use_region + '.amazonaws.com',
-            aws_access_key_id = use_keys['vmx_iam_key_id'],
-            aws_secret_access_key = use_keys['vmx_iam_key_secret'],
+            aws_access_key_id = use_keys['AccessKeyId'],
+            aws_secret_access_key = use_keys['SecretAccessKey'],
+            aws_session_token=use_keys['SessionToken'],
             config=my_config
         )
 
@@ -89,11 +90,11 @@ def lambda_handler(event, context):
     # Generate the presigned URL and return
     try:
         
-        vmx3_mode = event['vmx3_mode']
-        if vmx3_mode == 'task':
+        WLSConnectVoicemail3_mode = event['WLSConnectVoicemail3_mode']
+        if WLSConnectVoicemail3_mode == 'task':
             expires_in = int(os.environ['tasks_url_expire'])*86400
 
-        elif vmx3_mode == 'email':
+        elif WLSConnectVoicemail3_mode == 'email':
             expires_in = int(os.environ['email_url_expire'])*86400
 
         else:
@@ -119,28 +120,27 @@ def lambda_handler(event, context):
         return response
 
 # Sub to retrieve the secrets from Secrets Manager
-def get_secret():
+def assume_role_for_creds():
     # Set response container
-    secret_response = {}
+    sts_response = {}
 
     # Set secrets environment
     try:
-        secret_name = os.environ['secrets_key_id']
         region_name = os.environ['aws_region']
         logger.debug('********** Secrets environment vars set **********')
 
     except Exception as e:
         logger.error('********** Secrets environment vars failed to set **********')
         logger.error(e)
-        secret_response.update({'status':'complete','result':'ERROR','reason':'environment vars failed'})
+        sts_response.update({'status':'complete','result':'ERROR','reason':'environment vars failed'})
 
-        return secret_response
+        return sts_response
 
     # Create a Secrets Manager session
     try:
         session = boto3.session.Session()
-        client = session.client(
-            service_name='secretsmanager',
+        sts_client = session.client(
+            service_name='sts',
             region_name=region_name
         )
 
@@ -149,25 +149,28 @@ def get_secret():
     except Exception as e:
         logger.error('********** Secrets session failed to initialize **********')
         logger.error(e)
-        secret_response.update({'status':'complete','result':'ERROR','reason':'AWS Secrets Manager session failed'})
+        sts_response.update({'status':'complete','result':'ERROR','reason':'AWS Secrets Manager session failed'})
 
-        return secret_response
+        return sts_response
 
     # Get the secrets
     try:
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
+        assumed_role_object = sts_client.assume_role(
+            RoleArn=os.environ['role_arn'],
+            RoleSessionName="AssumeRoleSession1"
         )
-        secret = get_secret_value_response['SecretString']
-        secret_response.update(json.loads(secret))
-
+        credentials=assumed_role_object['Credentials']
         logger.debug('********** Successfully retrieved secrets **********')
+        logger.debug(credentials)
+        sts_response.update(credentials)
 
-        return secret_response
+        # logger.debug('********** Successfully retrieved secrets **********')
+
+        return sts_response
 
     except Exception as e:
         logger.error('********** Failed to get secrets **********')
         logger.error(e)
-        secret_response.update({'status':'complete','result':'ERROR','reason':'failed to get secrets'})
+        sts_response.update({'status':'complete','result':'ERROR','reason':'failed to get secrets'})
 
-        return secret_response
+        return sts_response

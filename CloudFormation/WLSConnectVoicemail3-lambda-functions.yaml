@@ -31,37 +31,37 @@ Parameters:
     Type: String
   VMToEmailDefaultTo:
     Type: String
-  VMXDefaultTaskFlow:
+  WLSConnectVoicemailDefaultTaskFlow:
     Type: String
-  VMXDefaultGuidedTaskFlow:
+  WLSConnectVoicemailDefaultGuidedTaskFlow:
     Type: String
-  VMXSecrets:
+  WLSConnectVoicemailSecrets:
     Type: String
-  VMXS3RecordingsBucket:
+  WLSConnectVoicemailS3RecordingsBucket:
     Type: String
-  VMXS3TranscriptsBucket:
+  WLSConnectVoicemailS3TranscriptsBucket:
     Type: String
   VMAgentAddressKey:
     Type: String
-  VMXKVStoS3RoleArn:
+  WLSConnectVoicemailKVStoS3RoleArn:
     Type: String
-  VMXKVStoS3Role:
+  WLSConnectVoicemailKVStoS3Role:
     Type: String
-  VMXPackagerRoleArn:
+  WLSConnectVoicemailPackagerRoleArn:
     Type: String
-  VMXPackagerRole:
+  WLSConnectVoicemailPackagerRole:
     Type: String
-  VMXPresignerRoleArn:
+  WLSConnectVoicemailPresignerRoleArn:
     Type: String
-  VMXPresignerRole:
+  WLSConnectVoicemailPresignerRole:
     Type: String
-  VMXTranscriberRoleArn:
+  WLSConnectVoicemailTranscriberRoleArn:
     Type: String
-  VMXTranscriberRole:
+  WLSConnectVoicemailTranscriberRole:
     Type: String
-  VMXTranscriberErrorRoleArn:
+  WLSConnectVoicemailTranscriberErrorRoleArn:
     Type: String
-  VMXTranscriberErrorRole:
+  WLSConnectVoicemailTranscriberErrorRole:
     Type: String
   TaskRecordingLinksExpireInXDays:
     Type: String
@@ -117,48 +117,40 @@ Conditions:
       - 'yes'
 
 Resources:
-  VMXPythonLayer:
-    Type: AWS::Lambda::LayerVersion
-    Properties:
-      CompatibleRuntimes:
-        - python3.12
-      Content:
-        S3Bucket:
-          !Join
-            - ''
-            - - !Ref EXPDevBucketPrefix
-              - 'vmx-source-'
-              - !Ref AWSRegion
-        S3Key:
-          !Join
-          - ''
-          - - 'vmx3/'
-            - !Ref EXPTemplateVersion
-            - /zip/vmx3_common_python.zip
-      Description: Provides dependencies code and functions for AWS Lambda functions that power Voicemail Express.
-      LayerName: !Join
-        - ''
-        - - 'common_python_layer_'
-          - !Ref ConnectInstanceAlias
-      LicenseInfo: https://aws.amazon.com/apache-2-0
+  # WLSConnectVoicemailPythonLayer:
+  #   Type: AWS::Lambda::LayerVersion
+  #   Properties:
+  #     CompatibleRuntimes:
+  #       - python3.12
+  #     Content:
+  #       S3Bucket:
+  #         !Join
+  #           - ''
+  #           - - !Ref EXPDevBucketPrefix
+  #             - 'WLSConnectVoicemail-source-'
+  #             - !Ref AWSRegion
+  #       S3Key:
+  #         !Join
+  #         - ''
+  #         - - 'WLSConnectVoicemail3/'
+  #           - !Ref EXPTemplateVersion
+  #           - /zip/WLSConnectVoicemail3_common_python.zip
+  #     Description: Provides dependencies code and functions for AWS Lambda functions that power Voicemail Express.
+  #     LayerName: !Join
+  #       - ''
+  #       - - 'common_python_layer_'
+  #         - !Ref ConnectInstanceAlias
+  #     LicenseInfo: https://aws.amazon.com/apache-2-0
 
-  VMXPresigner:
+  WLSConnectVoicemailPresigner:
     Type: AWS::Lambda::Function
     Condition: NonGuidedOptions
     Properties:
       Code:
         S3Bucket:
-          !Join
-            - ''
-            - - !Ref EXPDevBucketPrefix
-              - 'vmx-source-'
-              - !Ref AWSRegion
+          !Ref EXPDevBucketPrefix
         S3Key:
-          !Join
-          - ''
-          - - 'vmx3/'
-            - !Ref EXPTemplateVersion
-            - /zip/vmx3_presigner.py.zip
+          'WLSConnectVoicemail3_presigner.zip'
       Description: Generates the presigned URL that provides authenticated access to the voicemail recording in S3. Used for Task and EMail deliivery modes.
       Environment:
         Variables:
@@ -169,53 +161,45 @@ Resources:
           email_url_expire:
             Ref: EmailRecordingLinksExpireInXDays
           secrets_key_id:
-            Ref: VMXSecrets
+            Ref: WLSConnectVoicemailSecrets
           package_version:
             Ref: EXPTemplateVersion
       FunctionName:
         !Join
             - ''
-            - - 'VMX3-Presigner-'
+            - - 'WLSConnectVoicemail3-Presigner-'
               - !Ref ConnectInstanceAlias
-      Handler: vmx3_presigner.lambda_handler
+      Handler: WLSConnectVoicemail3_presigner.lambda_handler
       LoggingConfig:
         ApplicationLogLevel:
           Ref: LambdaLoggingLevel
         LogFormat: JSON
         SystemLogLevel: INFO
-      Role: !Ref VMXPresignerRoleArn
+      Role: !Ref WLSConnectVoicemailPresignerRoleArn
       Runtime: python3.12
       Timeout: 30
 
-  VMXPackager:
+  WLSConnectVoicemailPackager:
     Type: AWS::Lambda::Function
     Properties:
       Code:
         S3Bucket:
-          !Join
-            - ''
-            - - !Ref EXPDevBucketPrefix
-              - 'vmx-source-'
-              - !Ref AWSRegion
+          !Ref EXPDevBucketPrefix
         S3Key:
-          !Join
-          - ''
-          - - 'vmx3/'
-            - !Ref EXPTemplateVersion
-            - /zip/vmx3_packager.py.zip
+          'WLSConnectVoicemail3_packager.zip'
       Description: Packages the voicemail and creates a task in Amazon Connect.
       Environment:
         Variables:
           s3_recordings_bucket:
-            Ref: VMXS3RecordingsBucket
+            Ref: WLSConnectVoicemailS3RecordingsBucket
           s3_transcripts_bucket:
-            Ref: VMXS3TranscriptsBucket
+            Ref: WLSConnectVoicemailS3TranscriptsBucket
           presigner_function_arn:
-            !If [NonGuidedOptions, !Ref VMXPresigner, 'AWS::NoValue']
+            !If [NonGuidedOptions, !Ref WLSConnectVoicemailPresigner, 'AWS::NoValue']
           default_task_flow:
-            !If [ConnectTasksEnabled, !Ref VMXDefaultTaskFlow, 'AWS::NoValue']
+            !If [ConnectTasksEnabled, !Ref WLSConnectVoicemailDefaultTaskFlow, 'AWS::NoValue']
           default_guided_task_flow:
-            !If [ConnectGuidedTasksEnabled, !Ref VMXDefaultGuidedTaskFlow, 'AWS::NoValue']
+            !If [ConnectGuidedTasksEnabled, !Ref WLSConnectVoicemailDefaultGuidedTaskFlow, 'AWS::NoValue']
           package_version:
             Ref: EXPTemplateVersion
           TZ:
@@ -224,7 +208,7 @@ Resources:
             !If [AWSEmailEnabled, !Ref VMToEmailDefaultFrom, 'AWS::NoValue']
           default_email_target:
             !If [AWSEmailEnabled, !Ref VMToEmailDefaultTo, 'AWS::NoValue']
-          default_vmx_mode:
+          default_WLSConnectVoicemail_mode:
             !FindInMap [VMModes, !Ref "VMDefaultMode", mode]
           default_agent_email_template:
             !If [AWSEmailEnabled, !Ref VMEmailDefaultAgentTemplate, 'AWS::NoValue']
@@ -235,51 +219,45 @@ Resources:
       FunctionName:
         !Join
             - ''
-            - - 'VMX3-Packager-'
+            - - 'WLSConnectVoicemail3-Packager-'
               - !Ref ConnectInstanceAlias
-      Handler: vmx3_packager.lambda_handler
+      Handler: WLSConnectVoicemail3_packager.lambda_handler
       LoggingConfig:
         ApplicationLogLevel:
           Ref: LambdaLoggingLevel
         LogFormat: JSON
         SystemLogLevel: INFO
-      Role: !Ref VMXPackagerRoleArn
-      Layers: [!Ref VMXPythonLayer]
+      Role: !Ref WLSConnectVoicemailPackagerRoleArn
+      Layers: ['arn:aws:lambda:us-east-1:209479304522:layer:common_python_layer_bolerotest:1']
       Runtime: python3.12
       Timeout: 900
 
-  VMXTranscriber:
+  WLSConnectVoicemailTranscriber:
     Type: AWS::Lambda::Function
     Properties:
       Code:
         S3Bucket:
-          !Join
-            - ''
-            - - !Ref EXPDevBucketPrefix
-              - 'vmx-source-'
-              - !Ref AWSRegion
+          !Ref EXPDevBucketPrefix
         S3Key:
-          !Join
-          - ''
-          - - 'vmx3/'
-            - !Ref EXPTemplateVersion
-            - /zip/vmx3_transcriber.py.zip
+          'WLSConnectVoicemail3_transcriber.zip'
       Description: Transcribes the voicemail to text and stores the transcription in S3
       Environment:
         Variables:
           aws_region:
             Ref: AWSRegion
           s3_transcripts_bucket:
-            Ref: VMXS3TranscriptsBucket
+            Ref: WLSConnectVoicemailS3TranscriptsBucket
           package_version:
             Ref: EXPTemplateVersion
+          role_arn:
+            Ref: WLSConnectVoicemailTranscriberRoleArn
       FunctionName:
         !Join
             - ''
-            - - 'VMX3-Transcriber-'
+            - - 'WLSConnectVoicemail3-Transcriber-'
               - !Ref ConnectInstanceAlias
-      Handler: vmx3_transcriber.lambda_handler
-      Role: !Ref VMXTranscriberRoleArn
+      Handler: WLSConnectVoicemail3_transcriber.lambda_handler
+      Role: !Ref WLSConnectVoicemailTranscriberRoleArn
       Runtime: python3.12
       LoggingConfig:
         ApplicationLogLevel:
@@ -288,39 +266,31 @@ Resources:
         SystemLogLevel: INFO
       Timeout: 900
 
-  VMXKVStoS3:
+  WLSConnectVoicemailKVStoS3:
     Type: AWS::Lambda::Function
     Properties:
       Code:
         S3Bucket:
-          !Join
-            - ''
-            - - !Ref EXPDevBucketPrefix
-              - 'vmx-source-'
-              - !Ref AWSRegion
+          !Ref EXPDevBucketPrefix
         S3Key:
-          !Join
-          - ''
-          - - 'vmx3/'
-            - !Ref EXPTemplateVersion
-            - /zip/vmx3_kvs_to_s3.py.zip
+          'WLSConnectVoicemail3_kvs_to_s3.zip'
       Description: Extracts the voicemail from the KVS stream and writes it to S3 with tag data
       Environment:
         Variables:
           aws_region:
             Ref: AWSRegion
           s3_recordings_bucket:
-            Ref: VMXS3RecordingsBucket
+            Ref: WLSConnectVoicemailS3RecordingsBucket
           package_version:
             Ref: EXPTemplateVersion
       FunctionName:
         !Join
             - ''
-            - - 'VMX3-KVStoS3-'
+            - - 'WLSConnectVoicemail3-KVStoS3-'
               - !Ref ConnectInstanceAlias
-      Handler: vmx3_kvs_to_s3.lambda_handler
-      Role: !Ref VMXKVStoS3RoleArn
-      Layers: [!Ref VMXPythonLayer]
+      Handler: WLSConnectVoicemail3_kvs_to_s3.lambda_handler
+      Role: !Ref WLSConnectVoicemailKVStoS3RoleArn
+      Layers: ['arn:aws:lambda:us-east-1:209479304522:layer:common_python_layer_bolerotest:1']
       Runtime: python3.12
       LoggingConfig:
         ApplicationLogLevel:
@@ -329,38 +299,30 @@ Resources:
         SystemLogLevel: INFO
       Timeout: 900
 
-  VMXTranscribeErrorHandler:
+  WLSConnectVoicemailTranscribeErrorHandler:
     Type: AWS::Lambda::Function
     Properties:
       Code:
         S3Bucket:
-          !Join
-            - ''
-            - - !Ref EXPDevBucketPrefix
-              - 'vmx-source-'
-              - !Ref AWSRegion
+          !Ref EXPDevBucketPrefix
         S3Key:
-          !Join
-          - ''
-          - - 'vmx3/'
-            - !Ref EXPTemplateVersion
-            - /zip/vmx3_transcription_error_handler.py.zip
+          'WLSConnectVoicemail3_transcription_error_handler.zip'
       Description: Catches transcription errors due to corrupt wav files and provides a notification transcript so that processing completes
       Environment:
         Variables:
           aws_region:
             Ref: AWSRegion
           s3_transcripts_bucket:
-            Ref: VMXS3TranscriptsBucket
+            Ref: WLSConnectVoicemailS3TranscriptsBucket
           package_version:
             Ref: EXPTemplateVersion
       FunctionName:
         !Join
             - ''
-            - - 'VMX3-TranscribeErrorHandler-'
+            - - 'WLSConnectVoicemail3-TranscribeErrorHandler-'
               - !Ref ConnectInstanceAlias
-      Handler: vmx3_transcription_error_handler.lambda_handler
-      Role: !Ref VMXTranscriberErrorRoleArn
+      Handler: WLSConnectVoicemail3_transcription_error_handler.lambda_handler
+      Role: !Ref WLSConnectVoicemailTranscriberErrorRoleArn
       Runtime: python3.12
       LoggingConfig:
         ApplicationLogLevel:
@@ -370,19 +332,19 @@ Resources:
       Timeout: 30
 
 Outputs:
-  VMXPackagerArn:
+  WLSConnectVoicemailPackagerArn:
     Description: ARN of the Packager function
-    Value: !GetAtt VMXPackager.Arn
-  VMXTranscriberArn:
+    Value: !GetAtt WLSConnectVoicemailPackager.Arn
+  WLSConnectVoicemailTranscriberArn:
     Description: ARN of the Transcriber function
-    Value: !GetAtt VMXTranscriber.Arn
-  VMXKVStoS3:
+    Value: !GetAtt WLSConnectVoicemailTranscriber.Arn
+  WLSConnectVoicemailKVStoS3:
     Description: Name of the KVS to S3 function
-    Value: !Ref VMXKVStoS3
-  VMXTranscribeErrorArn:
+    Value: !Ref WLSConnectVoicemailKVStoS3
+  WLSConnectVoicemailTranscribeErrorArn:
     Description: ARN of the transcribe error handler function
-    Value: !GetAtt VMXTranscribeErrorHandler.Arn
-  VMXPresignerArn:
+    Value: !GetAtt WLSConnectVoicemailTranscribeErrorHandler.Arn
+  WLSConnectVoicemailPresignerArn:
     Description: ARN of the presigner function
     Condition: NonGuidedOptions
-    Value: !GetAtt VMXPresigner.Arn
+    Value: !GetAtt WLSConnectVoicemailPresigner.Arn

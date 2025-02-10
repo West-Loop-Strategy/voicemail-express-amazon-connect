@@ -25,11 +25,11 @@ import boto3
 # Establish logging configuration
 logger = logging.getLogger()
 
-def vmx3_to_connect_task(writer_payload):
+def WLSConnectVoicemail3_to_connect_task(writer_payload):
 
     # Debug lines for troubleshooting
     logger.debug('Code Version: ' + current_version)
-    logger.debug('VMX3 Package Version: ' + os.environ['package_version'])
+    logger.debug('WLSConnectVoicemail3 Package Version: ' + os.environ['package_version'])
     logger.debug(writer_payload)
 
     # Establish needed clients and resources
@@ -38,7 +38,7 @@ def vmx3_to_connect_task(writer_payload):
         logger.debug('********** Clients initialized **********')
     
     except Exception as e:
-        logger.error('********** VMX Initialization Error: Could not establish needed clients **********')
+        logger.error('********** WLSConnectVoicemail Initialization Error: Could not establish needed clients **********')
         logger.error(e)
 
         return {'status':'complete','result':'ERROR','reason':'Failed to Initialize clients'}
@@ -46,11 +46,11 @@ def vmx3_to_connect_task(writer_payload):
     logger.debug('Beginning Voicemail to Task')
     
     # Check for a task flow to use, if not, use default
-    if 'vmx3_task_flow' in writer_payload['json_attributes']:
-        if writer_payload['json_attributes']['vmx3_task_flow']:
-            contact_flow = writer_payload['json_attributes']['vmx3_task_flow']
+    if 'WLSConnectVoicemail3_task_flow' in writer_payload['json_attributes']:
+        if writer_payload['json_attributes']['WLSConnectVoicemail3_task_flow']:
+            contact_flow = writer_payload['json_attributes']['WLSConnectVoicemail3_task_flow']
         else:
-            writer_payload.update({'vmx3_task_flow':os.environ['default_task_flow']})
+            writer_payload.update({'WLSConnectVoicemail3_task_flow':os.environ['default_task_flow']})
             contact_flow = os.environ['default_task_flow']
 
     else:
@@ -67,7 +67,7 @@ def vmx3_to_connect_task(writer_payload):
             Name='Voicemail for ' + writer_payload['json_attributes']['entity_name'],
             References={
                 'Date Voicemail Received': {
-                    'Value': writer_payload['json_attributes']['vmx3_dateTime'],
+                    'Value': writer_payload['json_attributes']['WLSConnectVoicemail3_dateTime'],
                     'Type': 'STRING'
                 },
                 'Original Queue': {

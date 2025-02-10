@@ -7,27 +7,27 @@ Parameters:
     Type: String
   ConnectCTRStreamARN:
     Type: String
-  VMXS3RecordingsBucket:
+  WLSConnectVoicemailS3RecordingsBucket:
     Type: String
-  VMXS3TranscriptsBucket:
+  WLSConnectVoicemailS3TranscriptsBucket:
     Type: String
-  VMXS3RecordingsBucketArn:
+  WLSConnectVoicemailS3RecordingsBucketArn:
     Type: String
-  VMXPackagerArn:
+  WLSConnectVoicemailPackagerArn:
     Type: String
-  VMXS3TranscriptsBucketArn:
+  WLSConnectVoicemailS3TranscriptsBucketArn:
     Type: String
-  VMXTranscriberArn:
+  WLSConnectVoicemailTranscriberArn:
     Type: String
-  VMXKVStoS3:
+  WLSConnectVoicemailKVStoS3:
     Type: String
   ConnectInstanceAlias:
     Type: String
-  VMXTranscribeErrorArn:
+  WLSConnectVoicemailTranscribeErrorArn:
     Type: String
   ConnectInstanceARN:
     Type: String
-  VMXGuidedFlowPresignerArn:
+  WLSConnectVoicemailGuidedFlowPresignerArn:
     Type: String
   EnableVMToConnectGuidedTask:
     Type: String
@@ -45,25 +45,25 @@ Resources:
     Properties:
       InstanceId: !Ref ConnectInstanceARN
       IntegrationType: LAMBDA_FUNCTION
-      IntegrationArn: !Ref VMXGuidedFlowPresignerArn
+      IntegrationArn: !Ref WLSConnectVoicemailGuidedFlowPresignerArn
 
   RecordingsBucketPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref VMXTranscriberArn
+      FunctionName: !Ref WLSConnectVoicemailTranscriberArn
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
       SourceAccount: !Ref 'AWS::AccountId'
-      SourceArn: !Ref VMXS3RecordingsBucketArn
+      SourceArn: !Ref WLSConnectVoicemailS3RecordingsBucketArn
 
   TranscriptsBucketPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref VMXPackagerArn
+      FunctionName: !Ref WLSConnectVoicemailPackagerArn
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
       SourceAccount: !Ref 'AWS::AccountId'
-      SourceArn: !Ref VMXS3TranscriptsBucketArn
+      SourceArn: !Ref WLSConnectVoicemailS3TranscriptsBucketArn
 
   CTRStreamMapping:
     Type: AWS::Lambda::EventSourceMapping
@@ -72,12 +72,12 @@ Resources:
       BisectBatchOnFunctionError: true
       Enabled: true
       EventSourceArn: !Ref ConnectCTRStreamARN
-      FunctionName: !Ref VMXKVStoS3
+      FunctionName: !Ref WLSConnectVoicemailKVStoS3
       MaximumRetryAttempts: 3
       StartingPosition: LATEST
       FilterCriteria:
         Filters:
-          - Pattern: "{    \"data\":{        \"Attributes\":{            \"vmx3_flag\":[\"1\"]        },        \"Recordings\":{            \"StorageType\":[\"KINESIS_VIDEO_STREAM\"]        },        \"Agent\":[null]    }}"
+          - Pattern: "{    \"data\":{        \"Attributes\":{            \"WLSConnectVoicemail3_flag\":[\"1\"]        },        \"Recordings\":{            \"StorageType\":[\"KINESIS_VIDEO_STREAM\"]        },        \"Agent\":[null]    }}"
 
   TranscriberRule:
     Type: AWS::Events::Rule
@@ -91,18 +91,18 @@ Resources:
         detail:
           bucket:
             name:
-              - !Ref VMXS3RecordingsBucket
-      Name: !Join [ "-", [ !Ref ConnectInstanceAlias,TranscriberRule ] ]
+              - !Ref WLSConnectVoicemailS3RecordingsBucket
+      Name: !Join [ "-", [ wls,!Ref ConnectInstanceAlias,TranscriberRule ] ]
       State: ENABLED
       Targets:
         - Id: !Join [ "-", [ !Ref ConnectInstanceAlias,TranscriberFunction ] ]
-          Arn: !Ref VMXTranscriberArn
+          Arn: !Ref WLSConnectVoicemailTranscriberArn
 
   TrasncriberLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties: 
       Action: lambda:InvokeFunction
-      FunctionName: !Ref VMXTranscriberArn
+      FunctionName: !Ref WLSConnectVoicemailTranscriberArn
       Principal: events.amazonaws.com
       SourceAccount: !Ref 'AWS::AccountId'
       SourceArn: !GetAtt TranscriberRule.Arn
@@ -119,18 +119,18 @@ Resources:
         detail:
           bucket:
             name:
-              - !Ref VMXS3TranscriptsBucket
-      Name: !Join [ "-", [ !Ref ConnectInstanceAlias,PackagerRule ] ]
+              - !Ref WLSConnectVoicemailS3TranscriptsBucket
+      Name: !Join [ "-", [ wls,!Ref ConnectInstanceAlias,PackagerRule ] ]
       State: ENABLED
       Targets: 
         - Id: !Join [ "-", [ !Ref ConnectInstanceAlias,PackagerFunction ] ]
-          Arn: !Ref VMXPackagerArn
+          Arn: !Ref WLSConnectVoicemailPackagerArn
           
   PackagerLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties: 
       Action: lambda:InvokeFunction
-      FunctionName: !Ref VMXPackagerArn
+      FunctionName: !Ref WLSConnectVoicemailPackagerArn
       Principal: events.amazonaws.com
       SourceAccount: !Ref 'AWS::AccountId'
       SourceArn: !GetAtt PackagerRule.Arn
@@ -144,22 +144,22 @@ Resources:
           "detail-type": ["Transcribe Job State Change"],
           "detail": {
             "TranscriptionJobName": [{
-              "prefix": "vmx3_"
+              "prefix": "WLSConnectVoicemail3_"
             }],
             "TranscriptionJobStatus": ["FAILED"]
           }
         }
-      Name: !Join [ "-", [ !Ref ConnectInstanceAlias,TranscribeErrorRule ] ]
+      Name: !Join [ "-", [ wls,!Ref ConnectInstanceAlias,TranscribeErrorRule ] ]
       State: ENABLED
       Targets: 
         - Id: !Join [ "-", [ !Ref ConnectInstanceAlias,TranscribeErrorFunction ] ]
-          Arn: !Ref VMXTranscribeErrorArn
+          Arn: !Ref WLSConnectVoicemailTranscribeErrorArn
   
   TranscriberErrorLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties: 
       Action: lambda:InvokeFunction
-      FunctionName: !Ref VMXTranscribeErrorArn
+      FunctionName: !Ref WLSConnectVoicemailTranscribeErrorArn
       Principal: events.amazonaws.com
       SourceAccount: !Ref 'AWS::AccountId'
       SourceArn: !GetAtt TranscribeErrorRule.Arn

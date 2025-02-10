@@ -28,8 +28,8 @@ For queues, the solution is designed to extract the email address from the queue
 1.  Login to the Amazon Connect administration interface
 1.  Select Routing, then choose Queues
 1.  Select the Queue that you wish to modify
-1.  In the **Tags** section, create a new tag with the key of `vmx3_queue_email` and the value set to the email address that you want voicemails delivered to for this queue.
+1.  In the **Tags** section, create a new tag with the key of `WLSConnectVoicemail3_queue_email` and the value set to the email address that you want voicemails delivered to for this queue.
 1.  Save the queue
 
 ## Prerequisites Complete
-You have completed the prerequisites for Voicemail Express. You may now proceed to the [installation instructions](vmx_installation_instructions.md).
+You have completed the prerequisites for Voicemail Express. You may now proceed to the [installation instructions](WLSConnectVoicemail_installation_instructions.md).

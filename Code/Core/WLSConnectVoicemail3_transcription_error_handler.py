@@ -28,7 +28,7 @@ logger = logging.getLogger()
 def lambda_handler(event, context):
     # Debug lines for troubleshooting
     logger.debug('Code Version: ' + current_version)
-    logger.debug('VMX3 Package Version: ' + os.environ['package_version'])
+    logger.debug('WLSConnectVoicemail3 Package Version: ' + os.environ['package_version'])
     logger.debug(event)
     
     # Establish needed clients and resources
@@ -37,7 +37,7 @@ def lambda_handler(event, context):
         logger.debug('********** Clients initialized **********')
     
     except Exception as e:
-        logger.error('********** VMX Initialization Error: Could not establish needed clients **********')
+        logger.error('********** WLSConnectVoicemail Initialization Error: Could not establish needed clients **********')
         logger.error(e)
 
         return {'status':'complete','result':'ERROR','reason':'Failed to Initialize clients'}

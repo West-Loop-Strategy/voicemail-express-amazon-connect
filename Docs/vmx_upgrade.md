@@ -5,7 +5,7 @@ When new versions of Voicemail Express are release, you can easily upgrade to th
 1.  When you load the new template, it will retain the previous settings. You **must** make sure to change the template version field at the bottom to get the new version.
 
 ## Upgrade Instructions
-1.  Open this link in a new tab: [Voicemail Express CloudFormation template](../CloudFormation/vmx3.yaml). In the new tab right-click/control-click the **raw** button and save the template locally.
+1.  Open this link in a new tab: [Voicemail Express CloudFormation template](../CloudFormation/WLSConnectVoicemail3.yaml). In the new tab right-click/control-click the **raw** button and save the template locally.
 1.  Login to the [AWS Console](https://console.aws.amazon.com).
 1.  Navigate to the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home).
 1.  Make sure that you are in the correct region for your deployment.
@@ -13,7 +13,7 @@ When new versions of Voicemail Express are release, you can easily upgrade to th
 1.  Choose **Update**.
 1.  Select the option to **Replace existing template**, then choose **Upload a template file**.
 1.  Select **Choose file**.
-1.  Navigate to the **vmx3.yaml** file that you downloaded previously and choose **Open**.
+1.  Navigate to the **WLSConnectVoicemail3.yaml** file that you downloaded previously and choose **Open**.
 1.  Wait a moment for the S3 URL to update, then find the parameter field labeled **(ADVANCED USE ONLY) What is version you wish to deploy?**.
 1.  Change that value to the latest version available. You can find the latest version at the end of the [README](https://github.com/amazon-connect/voicemail-express-amazon-connect) page.
 1.  There may have been additional fields and changes. Please validate/update all other fields as well.

@@ -31,7 +31,7 @@ def lambda_handler(event, context):
     
     # Debug lines for troubleshooting
     logger.debug('Code Version: ' + current_version)
-    logger.debug('VMX3 Package Version: ' + os.environ['package_version'])
+    logger.debug('WLSConnectVoicemail3 Package Version: ' + os.environ['package_version'])
     logger.debug(event)
 
     # Establish an empty response

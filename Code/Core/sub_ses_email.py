@@ -25,10 +25,10 @@ import os
 # Establish logging configuration
 logger = logging.getLogger()
 
-def vmx3_to_ses_email(writer_payload):
+def WLSConnectVoicemail3_to_ses_email(writer_payload):
     # Debug lines for troubleshooting
     logger.debug('Code Version: ' + current_version)
-    logger.debug('VMX3 Package Version: ' + os.environ['package_version'])
+    logger.debug('WLSConnectVoicemail3 Package Version: ' + os.environ['package_version'])
     logger.debug(writer_payload)
 
     # Establish needed clients and resources
@@ -38,7 +38,7 @@ def vmx3_to_ses_email(writer_payload):
         logger.debug('********** Clients initialized **********')
     
     except Exception as e:
-        logger.error('********** VMX Initialization Error: Could not establish needed clients **********')
+        logger.error('********** WLSConnectVoicemail Initialization Error: Could not establish needed clients **********')
         logger.error(e)
 
         return {'status':'complete','result':'ERROR','reason':'Failed to Initialize clients'}
@@ -48,56 +48,56 @@ def vmx3_to_ses_email(writer_payload):
     # Identify the proper address to send the email FROM
     if 'email_from' in writer_payload['json_attributes']:
         if writer_payload['json_attributes']['email_from']:
-            vmx3_email_from_address = writer_payload['json_attributes']['email_from']
+            WLSConnectVoicemail3_email_from_address = writer_payload['json_attributes']['email_from']
     else:
-        vmx3_email_from_address = os.environ['default_email_from']
+        WLSConnectVoicemail3_email_from_address = os.environ['default_email_from']
 
-    logger.debug(vmx3_email_from_address)
+    logger.debug(WLSConnectVoicemail3_email_from_address)
 
     # Set destination address
     try:
-        vmx3_email_target_address = writer_payload['entity_email']
+        WLSConnectVoicemail3_email_target_address = writer_payload['entity_email']
 
     except:
-        vmx3_email_target_address = os.environ['default_email_target']
+        WLSConnectVoicemail3_email_target_address = os.environ['default_email_target']
 
-    logger.debug(vmx3_email_target_address)
+    logger.debug(WLSConnectVoicemail3_email_target_address)
 
-    if '@' in vmx3_email_target_address:
+    if '@' in WLSConnectVoicemail3_email_target_address:
         logger.info('Valid email address format')
 
     else:
-        vmx3_email_target_address = os.environ['default_email_target']
+        WLSConnectVoicemail3_email_target_address = os.environ['default_email_target']
 
-    logger.debug('Target Email: ' + vmx3_email_target_address)
+    logger.debug('Target Email: ' + WLSConnectVoicemail3_email_target_address)
 
     if 'email_template' in writer_payload['json_attributes']:
         if writer_payload['json_attributes']['email_template']:
-            vmx3_email_template = writer_payload['json_attributes']['email_template']
+            WLSConnectVoicemail3_email_template = writer_payload['json_attributes']['email_template']
 
     else:
         if writer_payload['entity_type'] == 'agent':
-            vmx3_email_template = os.environ['default_agent_email_template']
+            WLSConnectVoicemail3_email_template = os.environ['default_agent_email_template']
 
         else:
-            vmx3_email_template = os.environ['default_queue_email_template']
+            WLSConnectVoicemail3_email_template = os.environ['default_queue_email_template']
 
-    vmx3_email_data = json.dumps(writer_payload['json_attributes'])
+    WLSConnectVoicemail3_email_data = json.dumps(writer_payload['json_attributes'])
 
     # Send the email
     try:
 
         send_email = ses_client.send_email(
-            FromEmailAddress=vmx3_email_from_address,
+            FromEmailAddress=WLSConnectVoicemail3_email_from_address,
             Destination={
                 'ToAddresses': [
-                    vmx3_email_target_address,
+                    WLSConnectVoicemail3_email_target_address,
                 ],
             },
             Content={
                 'Template': {
-                    'TemplateName': vmx3_email_template,
-                    'TemplateData': vmx3_email_data
+                    'TemplateName': WLSConnectVoicemail3_email_template,
+                    'TemplateData': WLSConnectVoicemail3_email_data
                 }
             }
         )

@@ -48,12 +48,12 @@ Conditions:
       - 'yes'
 
 Resources:
-  VMXKVStoS3Role:
+  WLSConnectVoicemailKVStoS3Role:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Join
         - ''
-        - - VMX3_KVS_to_S3_Role_
+        - - WLSConnectVoicemail3_KVS_to_S3_Role_
           - !Ref ConnectInstanceAlias
       Description: Provides appropriate access for the KVS to S3 function.
       AssumeRolePolicyDocument:
@@ -68,13 +68,13 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  VMXGuidedFlowPresignerRole:
+  WLSConnectVoicemailGuidedFlowPresignerRole:
     Type: AWS::IAM::Role
     Condition: ConnectGuidedTasksEnabled
     Properties:
       RoleName: !Join
         - ''
-        - - VMX3_Guided_Flow_Role_
+        - - WLSConnectVoicemail3_Guided_Flow_Role_
           - !Ref ConnectInstanceAlias
       Description: Provides appropriate access for the Guided Flow Presigner function.
       AssumeRolePolicyDocument:
@@ -89,12 +89,12 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  VMXPackagerRole:
+  WLSConnectVoicemailPackagerRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Join
         - ''
-        - - VMX3_Packager_Role_
+        - - WLSConnectVoicemail3_Packager_Role_
           - !Ref ConnectInstanceAlias
       Description: Provides appropriate access for the Packager function.
       AssumeRolePolicyDocument:
@@ -109,13 +109,13 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  VMXPresignerRole:
+  WLSConnectVoicemailPresignerRole:
     Type: AWS::IAM::Role
     Condition: NonGuidedOptions
     Properties:
       RoleName: !Join
         - ''
-        - - VMX3_Presigner_Role_
+        - - WLSConnectVoicemail3_Presigner_Role_
           - !Ref ConnectInstanceAlias
       Description: Provides appropriate access for the Presigner function.
       AssumeRolePolicyDocument:
@@ -125,18 +125,20 @@ Resources:
             Principal:
               Service:
                 - lambda.amazonaws.com
+              AWS:
+                - !GetAtt WLSConnectVoicemailPresignerRole.Arn
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  VMXSESTemplateRole:
+  WLSConnectVoicemailSESTemplateRole:
     Type: AWS::IAM::Role
     Condition: AWSEmailEnabled
     Properties:
       RoleName: !Join
         - ''
-        - - VMX3_SES_Template_Role_
+        - - WLSConnectVoicemail3_SES_Template_Role_
           - !Ref ConnectInstanceAlias
       Description: Provides appropriate access for the SES Template tool function.
       AssumeRolePolicyDocument:
@@ -151,12 +153,33 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  VMXTranscriberRole:
+  WLSConnectVoicemailTranscriberRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Join
         - ''
-        - - VMX3_Transcriber_Role_
+        - - WLSConnectVoicemail3_Transcriber_Role_
+          - !Ref ConnectInstanceAlias
+      Description: Provides appropriate access for the Transcriber function.
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - transcribe.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  WLSConnectVoicemailTranscriberErrorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - WLSConnectVoicemail3_Transcriber_Error_Role_
           - !Ref ConnectInstanceAlias
       Description: Provides appropriate access for the Transcriber function.
       AssumeRolePolicyDocument:
@@ -171,37 +194,18 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  VMXTranscriberErrorRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join
-        - ''
-        - - VMX3_Transcriber_Error_Role_
-          - !Ref ConnectInstanceAlias
-      Description: Provides appropriate access for the Transcriber function.
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-
-  VMXS3RecordingsBucket:
+  WLSConnectVoicemailS3RecordingsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Join
         - ''
-        - - vmx3-recordings-
+        - - wlsconnectvoicemail-recordings-
           - !Ref ConnectInstanceAlias
       BucketEncryption:
         ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: aws:kms
+            KMSMasterKeyID: !GetAtt WLSConnectVoicemailKMSS3Key.Arn     
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerPreferred
@@ -211,13 +215,13 @@ Resources:
       LifecycleConfiguration: !If
         - AudioLifecycle
         - Rules:
-            - Id: VMXS3DeletePolicy
+            - Id: WLSConnectVoicemailS3DeletePolicy
               Status: !If
                 - AudioDelete
                 - Enabled
                 - Disabled
               ExpirationInDays: !Ref RecordingsExpireInXDays
-            - Id: VMXS3GlacierPolicy
+            - Id: WLSConnectVoicemailS3GlacierPolicy
               Status: !If
                 - AudioGlacier
                 - Enabled
@@ -227,17 +231,62 @@ Resources:
                   StorageClass: GLACIER
         - !Ref AWS::NoValue
 
-  VMXS3TranscriptsBucket:
+  WLSConnectVoicemailKMSS3Key:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'Connect Voicemail Encryption Key'
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: 'key-policy'
+        Statement:
+          - Sid: 'Enable IAM User Permissions'
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: 'Allow Key Administration'
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
+            Action:
+              - 'kms:Create*'
+              - 'kms:Describe*'
+              - 'kms:Enable*'
+              - 'kms:List*'
+              - 'kms:Put*'
+              - 'kms:Update*'
+              - 'kms:Revoke*'
+              - 'kms:Disable*'
+              - 'kms:Get*'
+              - 'kms:Delete*'
+              - 'kms:ScheduleKeyDeletion'
+              - 'kms:CancelKeyDeletion'
+            Resource: '*'
+
+  WLSConnectVoicemailKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Join 
+        - ''
+        - - 'alias/voicemail-key-'
+          - !Ref ConnectInstanceAlias
+      TargetKeyId: !Ref WLSConnectVoicemailKMSS3Key
+
+
+  WLSConnectVoicemailS3TranscriptsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Join
         - ''
-        - - vmx3-transcripts-
+        - - wlsconnectvoicemail-transcripts-
           - !Ref ConnectInstanceAlias
       BucketEncryption:
         ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: aws:kms
+            KMSMasterKeyID: !GetAtt WLSConnectVoicemailKMSS3Key.Arn     
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerPreferred
@@ -245,12 +294,12 @@ Resources:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
 
-  VMXPresignerUserPolicy:
+  WLSConnectVoicemailPresignerAssumePolicy:
     Type: AWS::IAM::ManagedPolicy
     DependsOn:
-      - VMXS3RecordingsBucket
-      - VMXS3TranscriptsBucket
-      - VMXPresignerRole
+      - WLSConnectVoicemailS3RecordingsBucket
+      - WLSConnectVoicemailS3TranscriptsBucket
+      - WLSConnectVoicemailPresignerRole
     Condition: NonGuidedOptions
     Properties:
       PolicyDocument:
@@ -262,117 +311,120 @@ Resources:
             Resource:
               - !Join
                 - ''
-                - - !GetAtt VMXS3RecordingsBucket.Arn
+                - - !GetAtt WLSConnectVoicemailS3RecordingsBucket.Arn
                   - /*
       ManagedPolicyName: !Join
         - ''
-        - - VMX3_Presigner_User_Policy_
+        - - WLSConnectVoicemail3_Presigner_Policy_
           - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXPresignerRole
+        - !Ref WLSConnectVoicemailPresignerRole
 
-  VMXPresignerUser:
-    Type: AWS::IAM::User
-    DependsOn:
-      - VMXPresignerUserPolicy
-    Condition: NonGuidedOptions
-    Properties:
-      UserName: !Join
-        - ''
-        - - VMX3_Presigner_User_
-          - !Ref ConnectInstanceAlias
-      ManagedPolicyArns:
-        - !Ref VMXPresignerUserPolicy
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  # WLSConnectVoicemailPresignerUser:
+  #   Type: AWS::IAM::User
+  #   DependsOn:
+  #     - WLSConnectVoicemailPresignerUserPolicy
+  #   Condition: NonGuidedOptions
+  #   Properties:
+  #     UserName: !Join
+  #       - ''
+  #       - - WLSConnectVoicemail3_Presigner_User_
+  #         - !Ref ConnectInstanceAlias
+  #     ManagedPolicyArns:
+  #       - !Ref WLSConnectVoicemailPresignerUserPolicy
+  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  VMXUserKey:
-    Type: AWS::IAM::AccessKey
-    DependsOn:
-      - VMXPresignerUser
-    Condition: NonGuidedOptions
-    Properties:
-      Status: Active
-      UserName: !Ref VMXPresignerUser
+  # WLSConnectVoicemailUserKey:
+  #   Type: AWS::IAM::AccessKey
+  #   DependsOn:
+  #     - WLSConnectVoicemailPresignerUser
+  #   Condition: NonGuidedOptions
+  #   Properties:
+  #     Status: Active
+  #     UserName: !Ref WLSConnectVoicemailPresignerUser
 
-  VMXSecrets:
-    Type: AWS::SecretsManager::Secret
-    DependsOn:
-      - VMXPresignerUser
-      - VMXUserKey
-    Condition: NonGuidedOptions
-    Properties:
-      Name: !Join
-        - ''
-        - - VMX3_Access_Secrets_
-          - !Ref ConnectInstanceAlias
-      Description: Stores user credentials for the presigner function
-      SecretString: !Sub
-        - '{"vmx_iam_key_id":"${KeyID}","vmx_iam_key_secret":"${KeySecret}"}'
-        - KeyID: !Ref VMXUserKey
-          KeySecret: !GetAtt VMXUserKey.SecretAccessKey
+  # WLSConnectVoicemailSecrets:
+  #   Type: AWS::SecretsManager::Secret
+  #   DependsOn:
+  #     - WLSConnectVoicemailPresignerUser
+  #     - WLSConnectVoicemailUserKey
+  #   Condition: NonGuidedOptions
+  #   Properties:
+  #     Name: !Join
+  #       - ''
+  #       - - WLSConnectVoicemail3_Access_Secrets_
+  #         - !Ref ConnectInstanceAlias
+  #     Description: Stores user credentials for the presigner function
+  #     SecretString: !Sub
+  #       - '{"WLSConnectVoicemail_iam_key_id":"${KeyID}","WLSConnectVoicemail_iam_key_secret":"${KeySecret}"}'
+  #       - KeyID: !Ref WLSConnectVoicemailUserKey
+  #         KeySecret: !GetAtt WLSConnectVoicemailUserKey.SecretAccessKey
 
 Outputs:
-  VMXS3RecordingsBucket:
+  WLSConnectVoicemailS3RecordingsBucket:
     Description: Voicemail Recording storage bucket name
-    Value: !Ref VMXS3RecordingsBucket
-  VMXS3RecordingsBuckettArn:
+    Value: !Ref WLSConnectVoicemailS3RecordingsBucket
+  WLSConnectVoicemailS3RecordingsBuckettArn:
     Description: Voicemail Recording storage bucket ARN
-    Value: !GetAtt VMXS3RecordingsBucket.Arn
-  VMXS3TranscriptsBucket:
+    Value: !GetAtt WLSConnectVoicemailS3RecordingsBucket.Arn
+  WLSConnectVoicemailS3TranscriptsBucket:
     Description: Voicemail Transcript storage bucket name
-    Value: !Ref VMXS3TranscriptsBucket
-  VMXS3TranscriptsBucketArn:
+    Value: !Ref WLSConnectVoicemailS3TranscriptsBucket
+  WLSConnectVoicemailS3TranscriptsBucketArn:
     Description: Voicemail Transcript storage bucket ARN
-    Value: !GetAtt VMXS3TranscriptsBucket.Arn
-  VMXSecrets:
+    Value: !GetAtt WLSConnectVoicemailS3TranscriptsBucket.Arn
+  WLSConnectVoicemailSecrets:
     Description: Secrets ID
     Condition: NonGuidedOptions
-    Value: !Ref VMXSecrets
-  VMXGuidedFlowPresignerRole:
+    Value: !Ref WLSConnectVoicemailSecrets
+  WLSConnectVoicemailGuidedFlowPresignerRole:
     Description: Guided flow presigner role name
     Condition: ConnectGuidedTasksEnabled
-    Value: !Ref VMXGuidedFlowPresignerRole
-  VMXGuidedFlowPresignerRoleArn:
+    Value: !Ref WLSConnectVoicemailGuidedFlowPresignerRole
+  WLSConnectVoicemailGuidedFlowPresignerRoleArn:
     Description: Guided flow presigner role ARN
     Condition: ConnectGuidedTasksEnabled
-    Value: !GetAtt VMXGuidedFlowPresignerRole.Arn
-  VMXKVStoS3Role:
+    Value: !GetAtt WLSConnectVoicemailGuidedFlowPresignerRole.Arn
+  WLSConnectVoicemailKVStoS3Role:
     Description: KVS to S3 role name
-    Value: !Ref VMXKVStoS3Role
-  VMXKVStoS3RoleArn:
+    Value: !Ref WLSConnectVoicemailKVStoS3Role
+  WLSConnectVoicemailKVStoS3RoleArn:
     Description: KVS to S3 role ARN
-    Value: !GetAtt VMXKVStoS3Role.Arn
-  VMXPackagerRole:
+    Value: !GetAtt WLSConnectVoicemailKVStoS3Role.Arn
+  WLSConnectVoicemailPackagerRole:
     Description: Packager role name
-    Value: !Ref VMXPackagerRole
-  VMXPackagerRoleArn:
+    Value: !Ref WLSConnectVoicemailPackagerRole
+  WLSConnectVoicemailPackagerRoleArn:
     Description: Packager role ARN
-    Value: !GetAtt VMXPackagerRole.Arn
-  VMXPresignerRole:
+    Value: !GetAtt WLSConnectVoicemailPackagerRole.Arn
+  WLSConnectVoicemailPresignerRole:
     Description: Presigner role name
     Condition: NonGuidedOptions
-    Value: !Ref VMXPresignerRole
-  VMXPresignerRoleArn:
+    Value: !Ref WLSConnectVoicemailPresignerRole
+  WLSConnectVoicemailPresignerRoleArn:
     Description: Presigner role ARN
     Condition: NonGuidedOptions
-    Value: !GetAtt VMXPresignerRole.Arn
-  VMXSESTemplateRole:
+    Value: !GetAtt WLSConnectVoicemailPresignerRole.Arn
+  WLSConnectVoicemailSESTemplateRole:
     Description: SES Template role name
     Condition: AWSEmailEnabled
-    Value: !Ref VMXSESTemplateRole
-  VMXSESTemplateRoleArn:
+    Value: !Ref WLSConnectVoicemailSESTemplateRole
+  WLSConnectVoicemailSESTemplateRoleArn:
     Description: SES Template role ARN
     Condition: AWSEmailEnabled
-    Value: !GetAtt VMXSESTemplateRole.Arn
-  VMXTranscriberRole:
+    Value: !GetAtt WLSConnectVoicemailSESTemplateRole.Arn
+  WLSConnectVoicemailTranscriberRole:
     Description: Transcriber role name
-    Value: !Ref VMXTranscriberRole
-  VMXTranscriberRoleArn:
+    Value: !Ref WLSConnectVoicemailTranscriberRole
+  WLSConnectVoicemailTranscriberRoleArn:
     Description: Transcriber role ARN
-    Value: !GetAtt VMXTranscriberRole.Arn
-  VMXTranscriberErrorRole:
+    Value: !GetAtt WLSConnectVoicemailTranscriberRole.Arn
+  WLSConnectVoicemailTranscriberErrorRole:
     Description: Transcriber error handler role name
-    Value: !Ref VMXTranscriberErrorRole
-  VMXTranscriberErrorRoleArn:
+    Value: !Ref WLSConnectVoicemailTranscriberErrorRole
+  WLSConnectVoicemailTranscriberErrorRoleArn:
     Description: Transcriber error handler role ARN
-    Value: !GetAtt VMXTranscriberErrorRole.Arn
+    Value: !GetAtt WLSConnectVoicemailTranscriberErrorRole.Arn
+  VoicemailKeyArn:
+    Description: 'KMS Key ARN'
+    Value: !GetAtt WLSConnectVoicemailKMSS3Key.Arn

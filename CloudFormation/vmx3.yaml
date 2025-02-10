@@ -11,7 +11,7 @@ Metadata:
           - AWSRegion
           - ConnectInstanceAlias
           - ConnectInstanceARN
-          - VMXKVSStreamPrefix
+          - WLSConnectVoicemailKVSStreamPrefix
           - ConnectCTRStreamARN
           - LambdaLoggingLevel
       - Label:
@@ -84,7 +84,7 @@ Metadata:
       GuidedTaskRecordingLinksExpireInXMinutes:
         default: How long should the presigned recording URL be valid for? (# of
           minutes)
-      VMXKVSStreamPrefix:
+      WLSConnectVoicemailKVSStreamPrefix:
         default: What is the prefix for the Kinesis Video Streams (KVS) associated with this instance?
       LambdaLoggingLevel:
         default: For the included AWS Lambda functions, what should the default logging
@@ -147,9 +147,13 @@ Parameters:
     Type: String
     Default: ''
     Description: Not required and only used for development purposes.
-  VMXKVSStreamPrefix:
+  WLSConnectVoicemailKVSStreamPrefix:
     Type: String
     Default: 'Looks like - PREFIX-connect-ALIAS-contact-'
+    Description: The full prefix for the KVS streams. You can find this in the Connect Console at Data Storage > Live media Streaming > Kinesis video stream prefix.
+  WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn:
+    Type: String
+    Default: 'Looks like - arn:aws:kms:REGION:ACCOUNT:key/REPLACEME'
     Description: The full prefix for the KVS streams. You can find this in the Connect Console at Data Storage > Live media Streaming > Kinesis video stream prefix.
   EmailRecordingLinksExpireInXDays:
     Type: String
@@ -312,8 +316,7 @@ Mappings:
       mode: guided_task
 
 Resources:
-
-  VMXCoreStack:
+  WLSConnectVoicemailCoreStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
@@ -327,19 +330,15 @@ Resources:
         - ''
         - - https://
           - !Ref EXPDevBucketPrefix
-          - vmx-source-
-          - !Ref AWSRegion
           - .s3.
           - !Ref AWSRegion
-          - .amazonaws.com/vmx3/
-          - !Ref EXPTemplateVersion
-          - /cloudformation/vmx3-core.yaml
+          - .amazonaws.com/WLSConnectVoicemail3-core.yaml
       TimeoutInMinutes: 5
 
-  VMXContactFlowStack:
+  WLSConnectVoicemailContactFlowStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - VMXCoreStack
+      - WLSConnectVoicemailCoreStack
     Properties:
       Parameters:
         EXPTemplateVersion: !Ref EXPTemplateVersion
@@ -354,35 +353,31 @@ Resources:
         VMToEmailDefaultTo: !Ref VMToEmailDefaultTo
         VMTestAgentId: !Ref VMTestAgentId
         VMTestQueueARN: !Ref VMTestQueueARN
-        VMXS3RecordingsBucket: !GetAtt VMXCoreStack.Outputs.VMXS3RecordingsBucket
+        WLSConnectVoicemailS3RecordingsBucket: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3RecordingsBucket
         GuidedTaskRecordingLinksExpireInXMinutes: !Ref GuidedTaskRecordingLinksExpireInXMinutes
-        VMXGuidedFlowPresignerRoleArn: !If
+        WLSConnectVoicemailGuidedFlowPresignerRoleArn: !If
           - ConnectGuidedTasksEnabled
-          - !GetAtt VMXCoreStack.Outputs.VMXGuidedFlowPresignerRoleArn
+          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailGuidedFlowPresignerRoleArn
           - AWS::NoValue
-        VMXGuidedFlowPresignerRole: !If
+        WLSConnectVoicemailGuidedFlowPresignerRole: !If
           - ConnectGuidedTasksEnabled
-          - !GetAtt VMXCoreStack.Outputs.VMXGuidedFlowPresignerRole
+          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailGuidedFlowPresignerRole
           - AWS::NoValue
         LambdaLoggingLevel: !Ref LambdaLoggingLevel
       TemplateURL: !Join
         - ''
         - - https://
           - !Ref EXPDevBucketPrefix
-          - vmx-source-
-          - !Ref AWSRegion
           - .s3.
           - !Ref AWSRegion
-          - .amazonaws.com/vmx3/
-          - !Ref EXPTemplateVersion
-          - /cloudformation/vmx3-contactflows.yaml
+          - .amazonaws.com/WLSConnectVoicemail3-contactflows.yaml
       TimeoutInMinutes: 5
 
-  VMXSESSetupStack:
+  WLSConnectVoicemailSESSetupStack:
     Type: AWS::CloudFormation::Stack
     Condition: AWSEmailEnabled
     DependsOn:
-      - VMXCoreStack
+      - WLSConnectVoicemailCoreStack
     Properties:
       Parameters:
         AWSRegion: !Ref AWSRegion
@@ -390,25 +385,21 @@ Resources:
         EXPDevBucketPrefix: !Ref EXPDevBucketPrefix
         EXPTemplateVersion: !Ref EXPTemplateVersion
         LambdaLoggingLevel: !Ref LambdaLoggingLevel
-        VMXSESTemplateRoleArn: !GetAtt VMXCoreStack.Outputs.VMXSESTemplateRoleArn
+        WLSConnectVoicemailSESTemplateRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailSESTemplateRoleArn
       TemplateURL: !Join
         - ''
         - - https://
           - !Ref EXPDevBucketPrefix
-          - vmx-source-
-          - !Ref AWSRegion
           - .s3.
           - !Ref AWSRegion
-          - .amazonaws.com/vmx3/
-          - !Ref EXPTemplateVersion
-          - /cloudformation/vmx3-ses-setup.yaml
+          - .amazonaws.com/WLSConnectVoicemail3-ses-setup.yaml
       TimeoutInMinutes: 5
 
-  VMXLambdaStack:
+  WLSConnectVoicemailLambdaStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - VMXCoreStack
-      - VMXContactFlowStack
+      - WLSConnectVoicemailCoreStack
+      - WLSConnectVoicemailContactFlowStack
     Properties:
       Parameters:
         EXPTemplateVersion: !Ref EXPTemplateVersion
@@ -422,131 +413,128 @@ Resources:
         RecordingsExpireInXDays: !Ref RecordingsExpireInXDays
         VMEmailDefaultAgentTemplate: !If
           - AWSEmailEnabled
-          - !GetAtt VMXSESSetupStack.Outputs.VMEmailDefaultAgentTemplate
+          - !GetAtt WLSConnectVoicemailSESSetupStack.Outputs.VMEmailDefaultAgentTemplate
           - AWS::NoValue
         VMEmailDefaultQueueTemplate: !If
           - AWSEmailEnabled
-          - !GetAtt VMXSESSetupStack.Outputs.VMEmailDefaultQueueTemplate
+          - !GetAtt WLSConnectVoicemailSESSetupStack.Outputs.VMEmailDefaultQueueTemplate
           - AWS::NoValue
         VMDefaultMode: !Ref VMDefaultMode
         VMToEmailDefaultFrom: !Ref VMToEmailDefaultFrom
         VMToEmailDefaultTo: !Ref VMToEmailDefaultTo
-        VMXDefaultTaskFlow: !If
+        WLSConnectVoicemailDefaultTaskFlow: !If
           - ConnectTasksEnabled
-          - !GetAtt VMXContactFlowStack.Outputs.VMXExampleTaskFlowID
+          - !GetAtt WLSConnectVoicemailContactFlowStack.Outputs.WLSConnectVoicemailExampleTaskFlowID
           - AWS::NoValue
-        VMXDefaultGuidedTaskFlow: !If
+        WLSConnectVoicemailDefaultGuidedTaskFlow: !If
           - ConnectGuidedTasksEnabled
-          - !GetAtt VMXContactFlowStack.Outputs.VMXExampleGuidedTaskFlowID
+          - !GetAtt WLSConnectVoicemailContactFlowStack.Outputs.WLSConnectVoicemailExampleGuidedTaskFlowID
           - AWS::NoValue
-        VMXSecrets: !If
+        WLSConnectVoicemailSecrets: !If
           - NonGuidedOptions
-          - !GetAtt VMXCoreStack.Outputs.VMXSecrets
+          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailSecrets
           - AWS::NoValue
-        VMXS3RecordingsBucket: !GetAtt VMXCoreStack.Outputs.VMXS3RecordingsBucket
-        VMXS3TranscriptsBucket: !GetAtt VMXCoreStack.Outputs.VMXS3TranscriptsBucket
+        WLSConnectVoicemailS3RecordingsBucket: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3RecordingsBucket
+        WLSConnectVoicemailS3TranscriptsBucket: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3TranscriptsBucket
         VMAgentAddressKey: !Ref VMAgentAddressKey
-        VMXKVStoS3RoleArn: !GetAtt VMXCoreStack.Outputs.VMXKVStoS3RoleArn
-        VMXKVStoS3Role: !GetAtt VMXCoreStack.Outputs.VMXKVStoS3Role
-        VMXPackagerRoleArn: !GetAtt VMXCoreStack.Outputs.VMXPackagerRoleArn
-        VMXPackagerRole: !GetAtt VMXCoreStack.Outputs.VMXPackagerRole
-        VMXPresignerRole: !If
+        WLSConnectVoicemailKVStoS3RoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailKVStoS3RoleArn
+        WLSConnectVoicemailKVStoS3Role: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailKVStoS3Role
+        WLSConnectVoicemailPackagerRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailPackagerRoleArn
+        WLSConnectVoicemailPackagerRole: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailPackagerRole
+        WLSConnectVoicemailPresignerRole: !If
           - NonGuidedOptions
-          - !GetAtt VMXCoreStack.Outputs.VMXPresignerRole
+          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailPresignerRole
           - AWS::NoValue
-        VMXPresignerRoleArn: !If
+        WLSConnectVoicemailPresignerRoleArn: !If
           - NonGuidedOptions
-          - !GetAtt VMXCoreStack.Outputs.VMXPresignerRoleArn
+          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailPresignerRoleArn
           - AWS::NoValue
-        VMXTranscriberRole: !GetAtt VMXCoreStack.Outputs.VMXTranscriberRole
-        VMXTranscriberRoleArn: !GetAtt VMXCoreStack.Outputs.VMXTranscriberRoleArn
-        VMXTranscriberErrorRole: !GetAtt VMXCoreStack.Outputs.VMXTranscriberErrorRole
-        VMXTranscriberErrorRoleArn: !GetAtt VMXCoreStack.Outputs.VMXTranscriberErrorRoleArn
+        WLSConnectVoicemailTranscriberRole: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailTranscriberRole
+        WLSConnectVoicemailTranscriberRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailTranscriberRoleArn
+        WLSConnectVoicemailTranscriberErrorRole: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailTranscriberErrorRole
+        WLSConnectVoicemailTranscriberErrorRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailTranscriberErrorRoleArn
         TaskRecordingLinksExpireInXDays: !Ref TaskRecordingLinksExpireInXDays
         EmailRecordingLinksExpireInXDays: !Ref EmailRecordingLinksExpireInXDays
       TemplateURL: !Join
         - ''
         - - https://
           - !Ref EXPDevBucketPrefix
-          - vmx-source-
-          - !Ref AWSRegion
           - .s3.
           - !Ref AWSRegion
-          - .amazonaws.com/vmx3/
-          - !Ref EXPTemplateVersion
-          - /cloudformation/vmx3-lambda-functions.yaml
+          - .amazonaws.com/WLSConnectVoicemail3-lambda-functions.yaml
       TimeoutInMinutes: 10
 
-  VMXPolicyStack:
+  WLSConnectVoicemailPolicyStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - VMXLambdaStack
+      - WLSConnectVoicemailLambdaStack
     Properties:
       Parameters:
         ConnectInstanceAlias: !Ref ConnectInstanceAlias
         ConnectInstanceARN: !Ref ConnectInstanceARN
-        VMXGuidedFlowPresignerRole: !If
+        WLSConnectVoicemailGuidedFlowPresignerRole: !If
           - ConnectGuidedTasksEnabled
-          - !GetAtt VMXCoreStack.Outputs.VMXGuidedFlowPresignerRole
+          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailGuidedFlowPresignerRole
           - AWS::NoValue
-        VMXKVStoS3Role: !GetAtt VMXCoreStack.Outputs.VMXKVStoS3Role
-        VMXPackagerRole: !GetAtt VMXCoreStack.Outputs.VMXPackagerRole
-        VMXPresignerRole: !If
+        WLSConnectVoicemailKVStoS3Role: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailKVStoS3Role
+        WLSConnectVoicemailPackagerRole: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailPackagerRole
+        WLSConnectVoicemailPresignerRole: !If
           - NonGuidedOptions
-          - !GetAtt VMXCoreStack.Outputs.VMXPresignerRole
+          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailPresignerRole
           - AWS::NoValue
-        VMXSESTemplateRole: !If
+        WLSConnectVoicemailSESTemplateRole: !If
           - AWSEmailEnabled
-          - !GetAtt VMXCoreStack.Outputs.VMXSESTemplateRole
+          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailSESTemplateRole
           - AWS::NoValue
-        VMXTranscriberRole: !GetAtt VMXCoreStack.Outputs.VMXTranscriberRole
-        VMXTranscriberErrorRole: !GetAtt VMXCoreStack.Outputs.VMXTranscriberErrorRole
-        VMXS3RecordingsBucketArn: !GetAtt VMXCoreStack.Outputs.VMXS3RecordingsBuckettArn
-        VMXS3TranscriptsBucketArn: !GetAtt VMXCoreStack.Outputs.VMXS3TranscriptsBucketArn
-        VMXKVSStreamPrefix: !Ref VMXKVSStreamPrefix
+        WLSConnectVoicemailTranscriberRole: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailTranscriberRole
+        WLSConnectVoicemailTranscriberRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailTranscriberRoleArn
+        WLSConnectVoicemailTranscriberErrorRole: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailTranscriberErrorRole
+        WLSConnectVoicemailS3RecordingsBucketArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3RecordingsBuckettArn
+        WLSConnectVoicemailS3TranscriptsBucketArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3TranscriptsBucketArn
+        WLSConnectVoicemailKVSStreamPrefix: !Ref WLSConnectVoicemailKVSStreamPrefix
         ConnectCTRStreamARN: !Ref ConnectCTRStreamARN
         AWSRegion: !Ref AWSRegion
-        VMXPresignerArn: !If
+        WLSConnectVoicemailPresignerArn: !If
           - NonGuidedOptions
-          - !GetAtt VMXLambdaStack.Outputs.VMXPresignerArn
+          - !GetAtt WLSConnectVoicemailLambdaStack.Outputs.WLSConnectVoicemailPresignerArn
           - AWS::NoValue
         EnableVMToEmail: !Ref EnableVMToEmail
         EnableVMToConnectTask: !Ref EnableVMToConnectTask
         EnableVMToConnectGuidedTask: !Ref EnableVMToConnectGuidedTask
+        VoicemailKeyArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.VoicemailKeyArn
+        WLSConnectVoicemailGuidedFlowPresignerRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailGuidedFlowPresignerRoleArn
+        WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn: !Ref WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn
+
       TemplateURL: !Join
         - ''
         - - https://
           - !Ref EXPDevBucketPrefix
-          - vmx-source-
-          - !Ref AWSRegion
           - .s3.
           - !Ref AWSRegion
-          - .amazonaws.com/vmx3/
-          - !Ref EXPTemplateVersion
-          - /cloudformation/vmx3-policy-builder.yaml
+          - .amazonaws.com/WLSConnectVoicemail3-policy-builder.yaml
       TimeoutInMinutes: 10
 
-  VMXTriggersStack:
+  WLSConnectVoicemailTriggersStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - VMXPolicyStack
+      - WLSConnectVoicemailPolicyStack
     Properties:
       Parameters:
         ConnectInstanceARN: !Ref ConnectInstanceARN
         EXPTemplateVersion: !Ref EXPTemplateVersion
         ConnectCTRStreamARN: !Ref ConnectCTRStreamARN
-        VMXS3RecordingsBucket: !GetAtt VMXCoreStack.Outputs.VMXS3RecordingsBucket
-        VMXS3TranscriptsBucket: !GetAtt VMXCoreStack.Outputs.VMXS3TranscriptsBucket
-        VMXS3RecordingsBucketArn: !GetAtt VMXCoreStack.Outputs.VMXS3RecordingsBuckettArn
-        VMXPackagerArn: !GetAtt VMXLambdaStack.Outputs.VMXPackagerArn
-        VMXS3TranscriptsBucketArn: !GetAtt VMXCoreStack.Outputs.VMXS3TranscriptsBucketArn
-        VMXTranscriberArn: !GetAtt VMXLambdaStack.Outputs.VMXTranscriberArn
-        VMXKVStoS3: !GetAtt VMXLambdaStack.Outputs.VMXKVStoS3
+        WLSConnectVoicemailS3RecordingsBucket: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3RecordingsBucket
+        WLSConnectVoicemailS3TranscriptsBucket: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3TranscriptsBucket
+        WLSConnectVoicemailS3RecordingsBucketArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3RecordingsBuckettArn
+        WLSConnectVoicemailPackagerArn: !GetAtt WLSConnectVoicemailLambdaStack.Outputs.WLSConnectVoicemailPackagerArn
+        WLSConnectVoicemailS3TranscriptsBucketArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3TranscriptsBucketArn
+        WLSConnectVoicemailTranscriberArn: !GetAtt WLSConnectVoicemailLambdaStack.Outputs.WLSConnectVoicemailTranscriberArn
+        WLSConnectVoicemailKVStoS3: !GetAtt WLSConnectVoicemailLambdaStack.Outputs.WLSConnectVoicemailKVStoS3
         ConnectInstanceAlias: !Ref ConnectInstanceAlias
-        VMXTranscribeErrorArn: !GetAtt VMXLambdaStack.Outputs.VMXTranscribeErrorArn
-        VMXGuidedFlowPresignerArn: !If
+        WLSConnectVoicemailTranscribeErrorArn: !GetAtt WLSConnectVoicemailLambdaStack.Outputs.WLSConnectVoicemailTranscribeErrorArn
+        WLSConnectVoicemailGuidedFlowPresignerArn: !If
           - ConnectGuidedTasksEnabled
-          - !GetAtt VMXContactFlowStack.Outputs.VMXGuidedFlowPresignerArn
+          - !GetAtt WLSConnectVoicemailContactFlowStack.Outputs.WLSConnectVoicemailGuidedFlowPresignerArn
           - AWS::NoValue
         EnableVMToConnectGuidedTask: !Ref EnableVMToConnectGuidedTask
 
@@ -554,11 +542,7 @@ Resources:
         - ''
         - - https://
           - !Ref EXPDevBucketPrefix
-          - vmx-source-
-          - !Ref AWSRegion
           - .s3.
           - !Ref AWSRegion
-          - .amazonaws.com/vmx3/
-          - !Ref EXPTemplateVersion
-          - /cloudformation/vmx3-triggers.yaml
+          - .amazonaws.com/WLSConnectVoicemail3-triggers.yaml
       TimeoutInMinutes: 10

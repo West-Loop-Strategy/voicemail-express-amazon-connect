@@ -34,7 +34,7 @@ logger = logging.getLogger()
 def lambda_handler(event, context):
     # Debug lines for troubleshooting
     logger.debug('Code Version: ' + current_version)
-    logger.debug('VMX3 Package Version: ' + os.environ['package_version'])
+    logger.debug('WLSConnectVoicemail3 Package Version: ' + os.environ['package_version'])
     logger.debug(event)
 
     # Process the records coming in
@@ -94,10 +94,10 @@ class ConnectAudioProcessor:
                 stop_fragment = recording['FragmentStopNumber']
                 attr_tag_container = ''
                 attribute_details = record_data['Attributes']
-                vmx3_lang_value = attribute_details['vmx3_lang']
-                vmx3_queue_arn_value = attribute_details['vmx3_queue_arn']
+                WLSConnectVoicemail3_lang_value = attribute_details['WLSConnectVoicemail3_lang']
+                WLSConnectVoicemail3_queue_arn_value = attribute_details['WLSConnectVoicemail3_queue_arn']
                 
-                attr_tag_container = f'vmx3_lang={vmx3_lang_value}&vmx3_queue_arn={vmx3_queue_arn_value}'
+                attr_tag_container = f'WLSConnectVoicemail3_lang={WLSConnectVoicemail3_lang_value}&WLSConnectVoicemail3_queue_arn={WLSConnectVoicemail3_queue_arn_value}'
                 logger.debug(attr_tag_container)
 
                 self.encoded_tags = re.sub(r'&\s*$', '', attr_tag_container)

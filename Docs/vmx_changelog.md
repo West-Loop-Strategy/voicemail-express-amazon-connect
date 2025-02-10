@@ -12,17 +12,17 @@
 -  Improved error handling in all functions
 -  Removed the Node common layer
 -  Load-tested 1,000s of voicemails
--  Improved [Troubleshooting](Docs/vmx_troubleshooting.md) section
--  Added [Getting Support](Docs/vmx_support.md)
--  Added [Changelog](Docs/vmx_changelog.md)
+-  Improved [Troubleshooting](Docs/WLSConnectVoicemail_troubleshooting.md) section
+-  Added [Getting Support](Docs/WLSConnectVoicemail_support.md)
+-  Added [Changelog](Docs/WLSConnectVoicemail_changelog.md)
 
 ## 2024.07.03
 -  Updated KVS to S3 function to reduce error conditions in environments with heavy KVS use or long retention windows.
 -  Updated all Lambda functions to use the native Lambda logging configuration
--  Changed code/template buckets to further seperate from VMX2
+-  Changed code/template buckets to further seperate from WLSConnectVoicemail2
 
 ## 2024.07.02
--  Improved CR filtering to reduce non-vmx records
+-  Improved CR filtering to reduce non-WLSConnectVoicemail records
 -  Changed trigger configuration to reduce errors blocking subsequent records
 
 ## 2024.07.01
@@ -46,6 +46,6 @@
 -  Simplified deployment process.
 -  Removed Salesforce-centric deployment options.
 -  All voicemails are delivered as Amazon Connect tasks. The option to add other deliver modes will come in a future release. 
--  An Amazon Connect flow module named **VMX3VoicemailCoreModule** is provided. This provides a standard voicemail experience, sets all required attributes, and records the voicemail. You can use this module in any standard Amazon Connect inbound contact flow to provide the voicemail experience without needing to create a custom flow.
--  The VMX3TestFlow has been modified to use the **VMX3VoicemailCoreModule**.
+-  An Amazon Connect flow module named **WLSConnectVoicemail3VoicemailCoreModule** is provided. This provides a standard voicemail experience, sets all required attributes, and records the voicemail. You can use this module in any standard Amazon Connect inbound contact flow to provide the voicemail experience without needing to create a custom flow.
+-  The WLSConnectVoicemail3TestFlow has been modified to use the **WLSConnectVoicemail3VoicemailCoreModule**.
 -  Modified transcribe job name to eliminate conflicts.

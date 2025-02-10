@@ -29,7 +29,7 @@ logger = logging.getLogger()
 def lambda_handler(event, context):
      # Debug lines for troubleshooting
     logger.debug('Code Version: ' + current_version)
-    logger.debug('VMX3 Package Version: ' + os.environ['package_version'])
+    logger.debug('WLSConnectVoicemail3 Package Version: ' + os.environ['package_version'])
     logger.debug(event)
 
     # Establish needed clients and resources
@@ -38,7 +38,7 @@ def lambda_handler(event, context):
         logger.debug('********** Clients initialized **********')
     
     except Exception as e:
-        logger.error('********** VMX Initialization Error: Could not establish needed clients **********')
+        logger.error('********** WLSConnectVoicemail Initialization Error: Could not establish needed clients **********')
         logger.error(e)
         
         return {'status':'complete','result':'ERROR','reason':'Failed to Initialize clients'}
@@ -98,13 +98,24 @@ def lambda_handler(event, context):
 
         # Submit the transcription job
         transcribe_response = transcribe_client.start_transcription_job(
-            TranscriptionJobName='vmx3_' + contact_id + '_' + str(round(time.time())),
-            LanguageCode=loaded_tags['vmx3_lang'],
+            TranscriptionJobName='WLSConnectVoicemail3_' + contact_id + '_' + str(round(time.time())),
+            LanguageCode=loaded_tags['WLSConnectVoicemail3_lang'],
             MediaFormat='wav',
             Media={
                 'MediaFileUri': recording_url
             },
-            OutputBucketName=os.environ['s3_transcripts_bucket']
+            OutputBucketName=os.environ['s3_transcripts_bucket'],
+            JobExecutionSettings={
+                'AllowDeferredExecution': False,
+                'DataAccessRoleArn': os.environ['role_arn']
+            },
+            ContentRedaction={
+                'RedactionType': 'PII',
+                'RedactionOutput': 'redacted',
+                'PiiEntityTypes': [
+                    'ALL',
+                ]
+            },
         )
         logger.debug('********** Transcribe job submitted **********')
 

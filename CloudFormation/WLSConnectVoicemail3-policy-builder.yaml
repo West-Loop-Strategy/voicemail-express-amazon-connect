@@ -1,37 +1,40 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Updates the VMX roles with appropriate policies. Updated for 2024.09.01.
+Description: Updates the WLSConnectVoicemail roles with appropriate policies. Updated for 2024.09.01.
 
 Parameters:
   ConnectInstanceAlias:
     Type: String
   ConnectInstanceARN:
     Type: String
-  VMXGuidedFlowPresignerRole:
+  WLSConnectVoicemailGuidedFlowPresignerRole:
     Type: String
-  VMXKVStoS3Role:
+  WLSConnectVoicemailKVStoS3Role:
     Type: String
-  VMXPackagerRole:
+  WLSConnectVoicemailPackagerRole:
     Type: String
-  VMXPresignerRole:
+  WLSConnectVoicemailPresignerRole:
     Type: String
-  VMXSESTemplateRole:
+  WLSConnectVoicemailSESTemplateRole:
     Type: String
-  VMXTranscriberRole:
+  WLSConnectVoicemailTranscriberRole:
     Type: String
-  VMXTranscriberErrorRole:
+  WLSConnectVoicemailTranscriberRoleArn:
     Type: String
-  VMXS3RecordingsBucketArn:
+    # Default: 'arn:aws:iam::209479304522:role/WLSConnectVoicemail3_Transcriber_Role_bolerotest'
+  WLSConnectVoicemailTranscriberErrorRole:
     Type: String
-  VMXS3TranscriptsBucketArn:
+  WLSConnectVoicemailS3RecordingsBucketArn:
     Type: String
-  VMXKVSStreamPrefix:
+  WLSConnectVoicemailS3TranscriptsBucketArn:
+    Type: String
+  WLSConnectVoicemailKVSStreamPrefix:
     Type: String
   ConnectCTRStreamARN:
     Type: String
   AWSRegion:
     Type: String
-  VMXPresignerArn:
+  WLSConnectVoicemailPresignerArn:
     Type: String
   EnableVMToConnectTask:
     Type: String
@@ -39,6 +42,13 @@ Parameters:
     Type: String
   EnableVMToConnectGuidedTask:
     Type: String
+  VoicemailKeyArn:
+    Type: String
+  WLSConnectVoicemailGuidedFlowPresignerRoleArn:
+    Type: String
+  WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn:
+    Type: String
+    
 
 Conditions:
   NonGuidedOptions: !Or
@@ -56,7 +66,7 @@ Conditions:
     - 'yes'
 
 Resources:
-  VMXGuidedFlowPresignerPolicy:
+  WLSConnectVoicemailGuidedFlowPresignerPolicy:
     Type: AWS::IAM::ManagedPolicy
     Condition: ConnectGuidedTasksEnabled
     Properties:
@@ -70,17 +80,17 @@ Resources:
             Resource:
               !Join
                 - ''
-                - - !Ref VMXS3RecordingsBucketArn
+                - - !Ref WLSConnectVoicemailS3RecordingsBucketArn
                   - '/*'
       ManagedPolicyName:
         !Join
           - ''
-          - - 'VMX_Guide_Presigner_Policy_'
+          - - 'WLSConnectVoicemail_Guide_Presigner_Policy_'
             - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXGuidedFlowPresignerRole
+        - !Ref WLSConnectVoicemailGuidedFlowPresignerRole
 
-  VMXKVStoS3Policy:
+  WLSConnectVoicemailKVStoS3Policy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       PolicyDocument:
@@ -99,7 +109,7 @@ Resources:
                   - ':'
                   - !Ref AWS::AccountId
                   - ':stream/'
-                  - !Ref VMXKVSStreamPrefix
+                  - !Ref WLSConnectVoicemailKVSStreamPrefix
                   - '*'
           - Effect: Allow
             Action:
@@ -108,7 +118,7 @@ Resources:
             Resource:
               !Join
                 - ''
-                - - !Ref VMXS3RecordingsBucketArn
+                - - !Ref WLSConnectVoicemailS3RecordingsBucketArn
                   - '/*'
           - Effect: Allow
             Action:
@@ -120,16 +130,24 @@ Resources:
               - 'kinesis:GetShardIterator'
               - 'kinesis:ListShards'
               - 'kinesis:ListStreams'
-            Resource: !Ref ConnectCTRStreamARN       
+            Resource: !Ref ConnectCTRStreamARN    
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource:
+              - !Ref VoicemailKeyArn
+              - !Ref WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn
+   
       ManagedPolicyName:
         !Join
           - ''
-          - - 'VMX_KVS_to_S3_Policy_'
+          - - 'WLSConnectVoicemail_KVS_to_S3_Policy_'
             - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXKVStoS3Role
+        - !Ref WLSConnectVoicemailKVStoS3Role
 
-  VMXPackagerPolicy:
+  WLSConnectVoicemailPackagerPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       PolicyDocument:
@@ -179,16 +197,20 @@ Resources:
                   - !Ref AWSRegion
                   - ':'
                   - !Ref AWS::AccountId
-                  - ':transcription-job/vmx3_*'
+                  - ':transcription-job/*WLSConnectVoicemail3_*'
           - Effect: Allow
             Action:
               - 's3:GetObjectTagging'
               - 's3:GetObject'
+              - 's3::ListBucket'
             Resource:
-              !Join
+              - !Ref WLSConnectVoicemailS3RecordingsBucketArn
+              - !Join
                 - ''
-                - - !Ref VMXS3RecordingsBucketArn
+                - - !Ref WLSConnectVoicemailS3RecordingsBucketArn
                   - '/*'
+              
+
           - Effect: Allow
             Action:
               - 's3:GetObjectTagging'
@@ -196,17 +218,17 @@ Resources:
             Resource:
               !Join
                 - ''
-                - - !Ref VMXS3TranscriptsBucketArn
+                - - !Ref WLSConnectVoicemailS3TranscriptsBucketArn
                   - '/*'
       ManagedPolicyName:
         !Join
           - ''
-          - - 'VMX_Packager_Policy_'
+          - - 'WLSConnectVoicemail_Packager_Policy_'
             - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXPackagerRole
+        - !Ref WLSConnectVoicemailPackagerRole
 
-  VMXPresignerPolicy:
+  WLSConnectVoicemailPresignerPolicy:
     Type: AWS::IAM::ManagedPolicy
     Condition: NonGuidedOptions
     Properties:
@@ -220,28 +242,28 @@ Resources:
             Resource:
               !Join
                 - ''
-                - - !Ref VMXS3RecordingsBucketArn
+                - - !Ref WLSConnectVoicemailS3RecordingsBucketArn
                   - '/*'
           - Effect: Allow
             Action:
-              - 'secretsmanager:GetSecretValue'
+              - 'sts:AssumeRole'
             Resource: 
-              !Join
-                - ''
-                - - 'arn:aws:secretsmanager:'
-                  - !Ref AWSRegion
-                  - ':'
-                  - !Ref AWS::AccountId
-                  - ':secret:VMX3_*'
+              - !Ref WLSConnectVoicemailGuidedFlowPresignerRoleArn
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+            Resource: 
+              - !Ref VoicemailKeyArn``
+
       ManagedPolicyName:
         !Join
           - ''
-          - - 'VMX_Presigner_Function_Policy_'
+          - - 'WLSConnectVoicemail_Presigner_Function_Policy_'
             - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXPresignerRole
+        - !Ref WLSConnectVoicemailPresignerRole
 
-  VMXSESPolicy:
+  WLSConnectVoicemailSESPolicy:
     Type: AWS::IAM::ManagedPolicy
     Condition: AWSEmailEnabled
     Properties:
@@ -258,12 +280,12 @@ Resources:
       ManagedPolicyName:
         !Join
           - ''
-          - - 'VMX_SES_Policy_'
+          - - 'WLSConnectVoicemail_SES_Policy_'
             - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXSESTemplateRole
+        - !Ref WLSConnectVoicemailSESTemplateRole
 
-  VMXTranscriberErrorPolicy:
+  WLSConnectVoicemailTranscriberErrorPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       PolicyDocument:
@@ -275,17 +297,17 @@ Resources:
             Resource:
               !Join
                 - ''
-                - - !Ref VMXS3TranscriptsBucketArn
+                - - !Ref WLSConnectVoicemailS3TranscriptsBucketArn
                   - '/*'
       ManagedPolicyName:
         !Join
           - ''
-          - - 'VMX_Transcriber_Error_Policy_'
+          - - 'WLSConnectVoicemail_Transcriber_Error_Policy_'
             - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXTranscriberErrorRole
+        - !Ref WLSConnectVoicemailTranscriberErrorRole
 
-  VMXTranscriberPolicy:
+  WLSConnectVoicemailTranscriberPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       PolicyDocument:
@@ -298,7 +320,7 @@ Resources:
             Resource:
               !Join
                 - ''
-                - - !Ref VMXS3RecordingsBucketArn
+                - - !Ref WLSConnectVoicemailS3RecordingsBucketArn
                   - '/*'
           - Effect: Allow
             Action:
@@ -311,17 +333,30 @@ Resources:
             Resource:
               !Join
                 - ''
-                - - !Ref VMXS3TranscriptsBucketArn
+                - - !Ref WLSConnectVoicemailS3TranscriptsBucketArn
                   - '/*'
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource:
+              - !Ref VoicemailKeyArn
+              - !Ref WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn
+          - Effect: Allow
+            Action:
+              - 'iam:PassRole'
+            Resource:
+              - !Ref WLSConnectVoicemailTranscriberRoleArn
+
       ManagedPolicyName:
         !Join
           - ''
-          - - 'VMX_Transcriber_Policy_'
+          - - 'WLSConnectVoicemail_Transcriber_Policy_'
             - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXTranscriberRole
+        - !Ref WLSConnectVoicemailTranscriberRole
   
-  VMXPackagerPolicyAddOn:
+  WLSConnectVoicemailPackagerPolicyAddOn:
     Type: AWS::IAM::ManagedPolicy
     Condition: NonGuidedOptions
     Properties:
@@ -331,11 +366,11 @@ Resources:
           - Effect: Allow
             Action:
               - 'lambda:InvokeFunction'
-            Resource: !Ref VMXPresignerArn
+            Resource: !Ref WLSConnectVoicemailPresignerArn
       ManagedPolicyName:
         !Join
           - ''
-          - - 'VMX_Packager_AddOn_Policy_'
+          - - 'WLSConnectVoicemail_Packager_AddOn_Policy_'
             - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref VMXPackagerRole
+        - !Ref WLSConnectVoicemailPackagerRole

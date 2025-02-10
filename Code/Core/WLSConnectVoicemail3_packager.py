@@ -24,7 +24,7 @@ import boto3
 import phonenumbers
 from datetime import datetime
 
-# Import the VMX Model Types
+# Import the WLSConnectVoicemail Model Types
 import sub_connect_task
 import sub_ses_email
 import sub_connect_guided_task
@@ -36,7 +36,7 @@ def lambda_handler(event, context):
     
     # Debug lines for troubleshooting
     logger.debug('Code Version: ' + current_version)
-    logger.debug('VMX3 Package Version: ' + os.environ['package_version'])
+    logger.debug('WLSConnectVoicemail3 Package Version: ' + os.environ['package_version'])
     logger.debug(event)
 
     # Establish required clients and resources
@@ -49,7 +49,7 @@ def lambda_handler(event, context):
         logger.debug('********** Clients initialized **********')
 
     except Exception as e:
-        logger.error('********** VMX INITIALIZATION: Failed to initialize clients **********')
+        logger.error('********** WLSConnectVoicemail INITIALIZATION: Failed to initialize clients **********')
         logger.error(e)
         
         return {'status':'complete','result':'ERROR','reason':'Failed to initialize'}
@@ -60,12 +60,12 @@ def lambda_handler(event, context):
     # Process the record
     # Establish data for transcript and recording, and clear out write tests.
     try:
-        original_transcript_key = event['detail']['object']['key']
+        original_transcript_key = event['detail']['object']['key'] 
         if original_transcript_key == '.write_access_check_file.temp':
             return('********** WRITE TEST - IGNORE **********')
         transcript_key = original_transcript_key[5:]
         transcript_job = transcript_key.replace('.json','')
-        contact_id = transcript_job.split('_',1)[0]
+        contact_id = transcript_job.split('_')[1]
         recording_key = contact_id + '.wav'
         transcript_bucket = os.environ['s3_transcripts_bucket']
         recording_bucket = os.environ['s3_recordings_bucket']
@@ -95,6 +95,7 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.error('********** Record Result: Failed to extract tags **********')
         logger.error(e)
+        logger.error(recording_key)
         
         return {'status':'complete','result':'ERROR','reason':'Failed to extract tags'}
 
@@ -114,7 +115,7 @@ def lambda_handler(event, context):
 
     # Set instance attributes
     try:
-        queue_arn = loaded_tags['vmx3_queue_arn']
+        queue_arn = loaded_tags['WLSConnectVoicemail3_queue_arn']
         arn_substring = queue_arn.split('instance/')[1]
         instance_id = arn_substring.split('/queue')[0]
         queue_id = arn_substring.split('queue/')[1]
@@ -191,7 +192,7 @@ def lambda_handler(event, context):
             InitialContactId = contact_id
         )
         json_attributes = contact_attributes['Attributes']
-        json_attributes.update({'entity_name':entity_name,'entity_id':entity_id,'entity_description':entity_description,'transcript_contents':transcript_contents,'callback_number':json_attributes['vmx3_from'],'vmx3_dateTime': formatted_datetime})
+        json_attributes.update({'entity_name':entity_name,'entity_id':entity_id,'entity_description':entity_description,'transcript_contents':transcript_contents,'callback_number':json_attributes['WLSConnectVoicemail3_from'],'WLSConnectVoicemail3_dateTime': formatted_datetime})
         writer_payload.update({'json_attributes':json_attributes})
         contact_attributes = json.dumps(contact_attributes['Attributes'])
         logger.debug('Original Contact Attributes: ' + contact_attributes)
@@ -202,23 +203,23 @@ def lambda_handler(event, context):
         
         contact_attributes = 'UNKNOWN'
 
-    # Determing VMX mode
-    if 'vmx3_mode' in writer_payload['json_attributes']:
-        if writer_payload['json_attributes']['vmx3_mode']:
-            vmx3_mode = writer_payload['json_attributes']['vmx3_mode']
+    # Determing WLSConnectVoicemail mode
+    if 'WLSConnectVoicemail3_mode' in writer_payload['json_attributes']:
+        if writer_payload['json_attributes']['WLSConnectVoicemail3_mode']:
+            WLSConnectVoicemail3_mode = writer_payload['json_attributes']['WLSConnectVoicemail3_mode']
     else:
-        vmx3_mode = os.environ['default_vmx_mode']
+        WLSConnectVoicemail3_mode = os.environ['default_WLSConnectVoicemail_mode']
 
-    logger.debug('VM Mode set to {0}.'.format(vmx3_mode))
+    logger.debug('VM Mode set to {0}.'.format(WLSConnectVoicemail3_mode))
 
     # Invoke presigner Lambda to generate presigned URL for recording
-    if vmx3_mode == 'task' or vmx3_mode == 'email':
+    if WLSConnectVoicemail3_mode == 'task' or WLSConnectVoicemail3_mode == 'email':
     
         try:
             input_params = {
                 'recording_bucket': recording_bucket,
                 'recording_key': recording_key,
-                'vmx3_mode': vmx3_mode
+                'WLSConnectVoicemail3_mode': WLSConnectVoicemail3_mode
             }
 
             lambda_response = lambda_client.invoke(
@@ -240,11 +241,11 @@ def lambda_handler(event, context):
 
     logger.debug(writer_payload)
 
-    # Execute the correct VMX mode
-    if vmx3_mode == 'task':
+    # Execute the correct WLSConnectVoicemail mode
+    if WLSConnectVoicemail3_mode == 'task':
 
         try:
-            write_vm = sub_connect_task.vmx3_to_connect_task(writer_payload)
+            write_vm = sub_connect_task.WLSConnectVoicemail3_to_connect_task(writer_payload)
 
         except Exception as e:
             logger.error('********** Failed to activate task function **********')
@@ -252,7 +253,7 @@ def lambda_handler(event, context):
             
             return {'status':'complete','result':'ERROR','reason':'Failed to activate task function'}
         
-    elif vmx3_mode == 'email':
+    elif WLSConnectVoicemail3_mode == 'email':
 
         # Define the appropriate email target
         if writer_payload['entity_type'] == 'agent':
@@ -267,7 +268,7 @@ def lambda_handler(event, context):
 
         else:
             try:
-                entity_email = get_queue_details['Queue']['Tags']['vmx3_queue_email']
+                entity_email = get_queue_details['Queue']['Tags']['WLSConnectVoicemail3_queue_email']
             except: 
                 entity_email = os.environ['default_email_target']
 
@@ -275,7 +276,7 @@ def lambda_handler(event, context):
         logger.debug('Entity Email: ' + entity_email)
 
         try:
-            write_vm = sub_ses_email.vmx3_to_ses_email(writer_payload)
+            write_vm = sub_ses_email.WLSConnectVoicemail3_to_ses_email(writer_payload)
 
         except Exception as e:
             logger.error('********** Failed to activate email function **********')
@@ -283,10 +284,10 @@ def lambda_handler(event, context):
             
             return {'status':'complete','result':'ERROR','reason':'Failed to activate email function'}
         
-    elif vmx3_mode == 'guided_task':
+    elif WLSConnectVoicemail3_mode == 'guided_task':
 
         try:
-            write_vm = sub_connect_guided_task.vmx3_to_connect_guided_task(writer_payload)
+            write_vm = sub_connect_guided_task.WLSConnectVoicemail3_to_connect_guided_task(writer_payload)
 
         except Exception as e:
             logger.error('********** Failed to activate task function **********')
@@ -321,19 +322,19 @@ def lambda_handler(event, context):
         logger.error(e)
         
 
-    # Clear the vmx_flag for this contact
+    # Clear the WLSConnectVoicemail_flag for this contact
     try:
         update_flag = connect_client.update_contact_attributes(
             InitialContactId=contact_id,
             InstanceId=instance_id,
             Attributes={
-                'vmx3_flag': '0'
+                'WLSConnectVoicemail3_flag': '0'
             }
         )
-        logger.debug('********** vmx_3_flag cleared for contact **********')
+        logger.debug('********** WLSConnectVoicemail_3_flag cleared for contact **********')
 
     except Exception as e:
-        logger.error('********** Failed to change vmx3_flag **********')
+        logger.error('********** Failed to change WLSConnectVoicemail3_flag **********')
         logger.error(e)
         
 
