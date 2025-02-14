@@ -15,6 +15,12 @@ Parameters:
     Type: String
   RecordingsExpireInXDays:
     Type: String
+  ServerAccessLogsBucketName:
+    Type: String
+  S3EventNotificationSNSTopic:
+    Type: String
+  ReplicationS3BucketArn:
+    Type: String
 
 Conditions:
   AudioDelete: !Equals
@@ -125,12 +131,27 @@ Resources:
             Principal:
               Service:
                 - lambda.amazonaws.com
-              AWS:
-                - !GetAtt WLSConnectVoicemailPresignerRole.Arn
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # WLSConnectVoicemailPresignerRoleDocument:
+  #   Type: AWS::IAM::RolePolicy
+  #   Properties:
+  #     RoleName: !Ref WLSConnectVoicemailPresignerRole
+  #     PolicyName: SelfAssumePolicy
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             AWS:
+  #               - !GetAtt WLSConnectVoicemailPresignerRole.Arn
+  #           Action:
+  #             - sts:AssumeRole
+
+  
 
   WLSConnectVoicemailSESTemplateRole:
     Type: AWS::IAM::Role
@@ -194,6 +215,50 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
+  WLSConnectVoicemailBucketBackupRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+
+
+  WLSConnectVoicemailBucketBackupPolicy:
+    Type: 'AWS::IAM::Policy'
+    DependsOn:
+         - WLSConnectVoicemailS3RecordingsBucket
+         - WLSConnectVoicemailS3TranscriptsBucket
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetReplicationConfiguration'
+              - 's3:ListBucket'
+              - 's3:GetObjectVersion'
+              - 's3:GetObjectVersionAcl'
+            Effect: Allow
+            Resource:
+              - !GetAtt WLSConnectVoicemailS3RecordingsBucket.Arn
+              - !GetAtt WLSConnectVoicemailS3RecordingsBucket.Arn
+          - Action:
+              - 's3:ReplicateObject'
+              - 's3:ReplicateDelete'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - !Ref ReplicationS3BucketArn
+                  - /*
+      PolicyName: WLSConnectVoicemailBucketBackupPolicy
+      Roles:
+        - !Ref WLSConnectVoicemailBucketBackupRole
+
+
   WLSConnectVoicemailS3RecordingsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -212,6 +277,9 @@ Resources:
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
+        TopicConfigurations:
+          - Topic: !Ref S3EventNotificationSNSTopic
+            Event: 's3:ObjectCreated:*'
       LifecycleConfiguration: !If
         - AudioLifecycle
         - Rules:
@@ -231,7 +299,7 @@ Resources:
                   StorageClass: GLACIER
         - !Ref AWS::NoValue
       VersioningConfiguration:
-        Status: Enabled
+        Status: 'Enabled'
       ObjectLockEnabled: true
       ObjectLockConfiguration:
         ObjectLockEnabled: Enabled
@@ -239,6 +307,59 @@ Resources:
           DefaultRetention:
             Mode: GOVERNANCE
             Years: 7
+      LoggingConfiguration:
+        DestinationBucketName: !Ref ServerAccessLogsBucketName
+        LogFilePrefix: !Join
+          - ''
+          - - wlsconnectvoicemail-recordings-
+            - !Ref ConnectInstanceAlias
+            - '/'
+      ReplicationConfiguration:
+        Role: !GetAtt WLSConnectVoicemailBucketBackupRole.Arn
+        Rules:
+          - Destination:
+              Bucket: !Ref ReplicationS3BucketArn
+              StorageClass: STANDARD
+            Id: Backup
+            Prefix: ''
+            Status: Enabled
+
+  WLSConnectVoicemailS3RecordingsBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref WLSConnectVoicemailS3RecordingsBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 's3:*'
+            Effect: Deny
+            Principal: '*'
+            Resource: 
+              - !Join ['', ['arn:aws:s3:::', !Ref WLSConnectVoicemailS3RecordingsBucket, '/*']]
+              - !Join ['', ['arn:aws:s3:::', !Ref WLSConnectVoicemailS3RecordingsBucket]]
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+  WLSConnectVoicemailS3TranscriptsBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref WLSConnectVoicemailS3TranscriptsBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 's3:*'
+            Effect: Deny
+            Principal: '*'
+            Resource: 
+              - !Join ['', ['arn:aws:s3:::', !Ref WLSConnectVoicemailS3TranscriptsBucket, '/*']]
+              - !Join ['', ['arn:aws:s3:::', !Ref WLSConnectVoicemailS3TranscriptsBucket]]
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
 
 
   WLSConnectVoicemailKMSS3Key:
@@ -275,14 +396,14 @@ Resources:
               - 'kms:CancelKeyDeletion'
             Resource: '*'
 
-  WLSConnectVoicemailKMSKeyAlias:
-    Type: AWS::KMS::Alias
-    Properties:
-      AliasName: !Join 
-        - ''
-        - - 'alias/voicemail-key-'
-          - !Ref ConnectInstanceAlias
-      TargetKeyId: !Ref WLSConnectVoicemailKMSS3Key
+  # WLSConnectVoicemailKMSKeyAlias:
+  #   Type: AWS::KMS::Alias
+  #   Properties:
+  #     AliasName: !Join 
+  #       - ''
+  #       - - 'alias/voicemail-key-'
+  #         - !Ref ConnectInstanceAlias
+  #     TargetKeyId: !Ref WLSConnectVoicemailKMSS3Key
 
 
   WLSConnectVoicemailS3TranscriptsBucket:
@@ -303,8 +424,29 @@ Resources:
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
+        TopicConfigurations:
+          - Topic: !Ref S3EventNotificationSNSTopic
+            Event: 's3:ObjectCreated:*'
+      LifecycleConfiguration: !If
+        - AudioLifecycle
+        - Rules:
+            - Id: WLSConnectVoicemailS3DeletePolicy
+              Status: !If
+                - AudioDelete
+                - Enabled
+                - Disabled
+              ExpirationInDays: !Ref RecordingsExpireInXDays
+            - Id: WLSConnectVoicemailS3GlacierPolicy
+              Status: !If
+                - AudioGlacier
+                - Enabled
+                - Disabled
+              Transitions:
+                - TransitionInDays: !Ref RecordingsExpireInXDays
+                  StorageClass: GLACIER
+        - !Ref AWS::NoValue
       VersioningConfiguration:
-        Status: Enabled
+        Status: 'Enabled'
       ObjectLockEnabled: true
       ObjectLockConfiguration:
         ObjectLockEnabled: Enabled
@@ -312,7 +454,43 @@ Resources:
           DefaultRetention:
             Mode: GOVERNANCE
             Years: 7
+      LoggingConfiguration:
+        DestinationBucketName: !Ref ServerAccessLogsBucketName
+        LogFilePrefix: !Join
+          - ''
+          - - wlsconnectvoicemail-transcripts-
+            - !Ref ConnectInstanceAlias
+            - '/'
+      ReplicationConfiguration:
+        Role: !GetAtt WLSConnectVoicemailBucketBackupRole.Arn
+        Rules:
+          - Destination:
+              Bucket: !Ref ReplicationS3BucketArn
+              StorageClass: STANDARD
+            Id: Backup
+            Prefix: ''
+            Status: Enabled
 
+
+
+  WLSConnectVoicemailPresignerAssumeRole:
+    Type: AWS::IAM::Role
+    Condition: NonGuidedOptions
+    Properties:
+      RoleName: !Join
+        - ''
+        - - WLSConnectVoicemail3_Presigner_Assume_Role_
+          - !Ref ConnectInstanceAlias
+      Description: Assumed by presigner function for generating access keys.
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt WLSConnectVoicemailPresignerRole.Arn
+            Action:
+              - sts:AssumeRole
 
   WLSConnectVoicemailPresignerAssumePolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -338,7 +516,9 @@ Resources:
         - - WLSConnectVoicemail3_Presigner_Policy_
           - !Ref ConnectInstanceAlias
       Roles:
-        - !Ref WLSConnectVoicemailPresignerRole
+        - !Ref WLSConnectVoicemailPresignerAssumeRole
+
+  
 
   # WLSConnectVoicemailPresignerUser:
   #   Type: AWS::IAM::User
@@ -393,18 +573,18 @@ Outputs:
   WLSConnectVoicemailS3TranscriptsBucketArn:
     Description: Voicemail Transcript storage bucket ARN
     Value: !GetAtt WLSConnectVoicemailS3TranscriptsBucket.Arn
-  WLSConnectVoicemailSecrets:
-    Description: Secrets ID
-    Condition: NonGuidedOptions
-    Value: !Ref WLSConnectVoicemailSecrets
+  # WLSConnectVoicemailSecrets:
+  #   Description: Secrets ID
+  #   Condition: NonGuidedOptions
+  #   Value: !Ref WLSConnectVoicemailSecrets
   WLSConnectVoicemailGuidedFlowPresignerRole:
     Description: Guided flow presigner role name
     Condition: ConnectGuidedTasksEnabled
     Value: !Ref WLSConnectVoicemailGuidedFlowPresignerRole
-  WLSConnectVoicemailGuidedFlowPresignerRoleArn:
+  WLSConnectVoicemailPresignerAssumeRoleArn:
     Description: Guided flow presigner role ARN
     Condition: ConnectGuidedTasksEnabled
-    Value: !GetAtt WLSConnectVoicemailGuidedFlowPresignerRole.Arn
+    Value: !GetAtt WLSConnectVoicemailPresignerAssumeRoleArn.Arn
   WLSConnectVoicemailKVStoS3Role:
     Description: KVS to S3 role name
     Value: !Ref WLSConnectVoicemailKVStoS3Role
@@ -448,3 +628,6 @@ Outputs:
   VoicemailKeyArn:
     Description: 'KMS Key ARN'
     Value: !GetAtt WLSConnectVoicemailKMSS3Key.Arn
+  WLSConnectVoicemailPresignerAssumeRoleArn:
+    Description: 'Role Arn for presigner assuming it'
+    Value: !GetAtt WLSConnectVoicemailPresignerAssumeRole.Arn

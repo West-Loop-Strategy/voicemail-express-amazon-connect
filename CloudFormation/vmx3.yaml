@@ -9,9 +9,13 @@ Metadata:
           default: 1. Environment Configuration
         Parameters:
           - AWSRegion
+          - ServerAccessLogsBucketName
+          - S3EventNotificationSNSTopic
+          - ReplicationS3BucketArn
           - ConnectInstanceAlias
           - ConnectInstanceARN
           - WLSConnectVoicemailKVSStreamPrefix
+          - WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn
           - ConnectCTRStreamARN
           - LambdaLoggingLevel
       - Label:
@@ -57,6 +61,12 @@ Metadata:
     ParameterLabels:
       AWSRegion:
         default: Which AWS region is your Amazon Connect Instance deployed to?
+      ServerAccessLogsBucketName:
+        default: Server Access Logging Bucket name?
+      S3EventNotificationSNSTopic:
+        default: S3 Event Notification SNS Topic ARN
+      ReplicationS3BucketArn:
+        default: S3 Replication Destination Bucket ARN
       ConnectCTRStreamARN:
         default: What is the ARN for the Kinesis Data Stream that is configured for
           Contact Record streaming.
@@ -86,6 +96,8 @@ Metadata:
           minutes)
       WLSConnectVoicemailKVSStreamPrefix:
         default: What is the prefix for the Kinesis Video Streams (KVS) associated with this instance?
+      WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn:
+        default: What is the KMS key arn used to encrypt KVS?
       LambdaLoggingLevel:
         default: For the included AWS Lambda functions, what should the default logging
           level be set to?
@@ -127,6 +139,16 @@ Parameters:
       Validate which region your Amazon Connect instance is deployed in and
       select the corresponding region from the drop-down list. You should run
       this template from this region as well.
+  ServerAccessLogsBucketName:
+    Type: String
+    Description: Provide the name of the bucket where you send S3 Bucket server access logs.
+  S3EventNotificationSNSTopic:
+    Type: String
+    Description: The SNS Topic ARN that you send S3 Event Notification to
+  ReplicationS3BucketArn:
+    Type: String
+    Description: The S3 Bucket ARN that you want to be the S3 replication destination for the 2 voicemail buckets
+      created here.
   ConnectCTRStreamARN:
     Type: String
     Default: Looks like - arn:aws:kinesis:REGION:ACCOUNT:stream/REPLACEME
@@ -154,7 +176,7 @@ Parameters:
   WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn:
     Type: String
     Default: 'Looks like - arn:aws:kms:REGION:ACCOUNT:key/REPLACEME'
-    Description: The full prefix for the KVS streams. You can find this in the Connect Console at Data Storage > Live media Streaming > Kinesis video stream prefix.
+    Description: If you've previously enable KMS encryption on your KVS for connect, put the arn of the KMS key here
   EmailRecordingLinksExpireInXDays:
     Type: String
     Default: 1
@@ -326,6 +348,9 @@ Resources:
         EnableVMToConnectTask: !Ref EnableVMToConnectTask
         EnableVMToConnectGuidedTask: !Ref EnableVMToConnectGuidedTask
         EnableVMToEmail: !Ref EnableVMToEmail
+        ServerAccessLogsBucketName: !Ref ServerAccessLogsBucketName
+        S3EventNotificationSNSTopic: !Ref S3EventNotificationSNSTopic
+        ReplicationS3BucketArn: !Ref ReplicationS3BucketArn
       TemplateURL: !Join
         - ''
         - - https://
@@ -430,10 +455,10 @@ Resources:
           - ConnectGuidedTasksEnabled
           - !GetAtt WLSConnectVoicemailContactFlowStack.Outputs.WLSConnectVoicemailExampleGuidedTaskFlowID
           - AWS::NoValue
-        WLSConnectVoicemailSecrets: !If
-          - NonGuidedOptions
-          - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailSecrets
-          - AWS::NoValue
+        # WLSConnectVoicemailSecrets: !If
+        #   - NonGuidedOptions
+        #   - !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailSecrets
+        #   - AWS::NoValue
         WLSConnectVoicemailS3RecordingsBucket: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3RecordingsBucket
         WLSConnectVoicemailS3TranscriptsBucket: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailS3TranscriptsBucket
         VMAgentAddressKey: !Ref VMAgentAddressKey
@@ -455,6 +480,7 @@ Resources:
         WLSConnectVoicemailTranscriberErrorRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailTranscriberErrorRoleArn
         TaskRecordingLinksExpireInXDays: !Ref TaskRecordingLinksExpireInXDays
         EmailRecordingLinksExpireInXDays: !Ref EmailRecordingLinksExpireInXDays
+        WLSConnectVoicemailPresignerAssumeRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailPresignerAssumeRoleArn
       TemplateURL: !Join
         - ''
         - - https://
@@ -502,7 +528,7 @@ Resources:
         EnableVMToConnectTask: !Ref EnableVMToConnectTask
         EnableVMToConnectGuidedTask: !Ref EnableVMToConnectGuidedTask
         VoicemailKeyArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.VoicemailKeyArn
-        WLSConnectVoicemailGuidedFlowPresignerRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailGuidedFlowPresignerRoleArn
+        WLSConnectVoicemailPresignerAssumeRoleArn: !GetAtt WLSConnectVoicemailCoreStack.Outputs.WLSConnectVoicemailPresignerAssumeRoleArn
         WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn: !Ref WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn
 
       TemplateURL: !Join

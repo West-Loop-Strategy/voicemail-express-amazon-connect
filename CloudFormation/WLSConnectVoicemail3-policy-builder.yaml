@@ -44,7 +44,7 @@ Parameters:
     Type: String
   VoicemailKeyArn:
     Type: String
-  WLSConnectVoicemailGuidedFlowPresignerRoleArn:
+  WLSConnectVoicemailPresignerAssumeRoleArn:
     Type: String
   WLSConnectVoicemailKVSStreamKMSVoicemailKeyArn:
     Type: String
@@ -202,7 +202,7 @@ Resources:
             Action:
               - 's3:GetObjectTagging'
               - 's3:GetObject'
-              - 's3::ListBucket'
+              - 's3:ListBucket'
             Resource:
               - !Ref WLSConnectVoicemailS3RecordingsBucketArn
               - !Join
@@ -248,12 +248,12 @@ Resources:
             Action:
               - 'sts:AssumeRole'
             Resource: 
-              - !Ref WLSConnectVoicemailGuidedFlowPresignerRoleArn
+              - !Ref WLSConnectVoicemailPresignerAssumeRoleArn
           - Effect: Allow
             Action:
               - 'kms:Decrypt'
             Resource: 
-              - !Ref VoicemailKeyArn``
+              - !Ref VoicemailKeyArn
 
       ManagedPolicyName:
         !Join

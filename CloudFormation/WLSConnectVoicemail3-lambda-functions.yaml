@@ -35,8 +35,8 @@ Parameters:
     Type: String
   WLSConnectVoicemailDefaultGuidedTaskFlow:
     Type: String
-  WLSConnectVoicemailSecrets:
-    Type: String
+  # WLSConnectVoicemailSecrets:
+  #   Type: String
   WLSConnectVoicemailS3RecordingsBucket:
     Type: String
   WLSConnectVoicemailS3TranscriptsBucket:
@@ -66,6 +66,8 @@ Parameters:
   TaskRecordingLinksExpireInXDays:
     Type: String
   EmailRecordingLinksExpireInXDays:
+    Type: String
+  WLSConnectVoicemailPresignerAssumeRoleArn:
     Type: String
 
 Mappings:
@@ -160,8 +162,8 @@ Resources:
             Ref: TaskRecordingLinksExpireInXDays
           email_url_expire:
             Ref: EmailRecordingLinksExpireInXDays
-          secrets_key_id:
-            Ref: WLSConnectVoicemailSecrets
+          role_arn:
+            Ref: WLSConnectVoicemailPresignerAssumeRoleArn
           package_version:
             Ref: EXPTemplateVersion
       FunctionName:

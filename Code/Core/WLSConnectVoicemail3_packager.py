@@ -313,7 +313,7 @@ def lambda_handler(event, context):
     try:
         
         transcribe_client.delete_transcription_job(
-            TranscriptionJobName=original_transcript_key.replace('.json','')
+            TranscriptionJobName=original_transcript_key.replace('.json','').replace('redacted-','')
         )
         logger.debug('Transcribe Job Deleted')
 
