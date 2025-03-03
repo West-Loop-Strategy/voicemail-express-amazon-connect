@@ -511,6 +511,11 @@ Resources:
                 - ''
                 - - !GetAtt WLSConnectVoicemailS3RecordingsBucket.Arn
                   - /*
+          - Effect: Allow
+            Action: 
+              - kms:Decrypt
+            Resource:
+              - !GetAtt WLSConnectVoicemailKMSS3Key.Arn
       ManagedPolicyName: !Join
         - ''
         - - WLSConnectVoicemail3_Presigner_Policy_
